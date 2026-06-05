@@ -224,6 +224,7 @@ export type BillingSettings = {
   MinTopUp: number
   CustomCallbackAddress: string
   PayMethods: string
+  EpayGateway2: string
   'payment_setting.amount_options': string
   'payment_setting.amount_discount': string
   'payment_setting.compliance_confirmed': boolean
@@ -263,6 +264,7 @@ export type BillingSettings = {
   // section (saved via /api/option/waffo-pancake/save).
   WaffoPancakeStoreID: string
   WaffoPancakeProductID: string
+  PaymentTip: string
   'checkin_setting.enabled': boolean
   'checkin_setting.min_quota': number
   'checkin_setting.max_quota': number

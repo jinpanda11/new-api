@@ -48,7 +48,7 @@ func initCol() {
 			logKeyCol = commonKeyCol
 		}
 	} else {
-		// LOG_SQL_DSN 为空时，日志数据库与主数据库相同
+		// LOG_SQL_DSN 涓虹┖鏃讹紝鏃ュ織鏁版嵁搴撲笌涓绘暟鎹簱鐩稿悓
 		if common.UsingPostgreSQL {
 			logGroupCol = `"group"`
 			logKeyCol = `"key"`
@@ -281,6 +281,11 @@ func migrateDB() error {
 		&CustomOAuthProvider{},
 		&UserOAuthBinding{},
 		&PerfMetric{},
+		&Ticket{},
+		&TicketMessage{},
+		&CommissionRecord{},
+		&CommissionWallet{},
+		&WithdrawalRequest{},
 	)
 	if err != nil {
 		return err
@@ -330,8 +335,11 @@ func migrateDBFast() error {
 		{&CustomOAuthProvider{}, "CustomOAuthProvider"},
 		{&UserOAuthBinding{}, "UserOAuthBinding"},
 		{&PerfMetric{}, "PerfMetric"},
+		{&CommissionRecord{}, "CommissionRecord"},
+		{&CommissionWallet{}, "CommissionWallet"},
+		{&WithdrawalRequest{}, "WithdrawalRequest"},
 	}
-	// 动态计算migration数量，确保errChan缓冲区足够大
+	// 鍔ㄦ€佽绠梞igration鏁伴噺锛岀‘淇漞rrChan缂撳啿鍖鸿冻澶熷ぇ
 	errChan := make(chan error, len(migrations))
 
 	for _, m := range migrations {
@@ -458,7 +466,7 @@ PRIMARY KEY (` + "`id`" + `)
 // migrateTokenModelLimitsToText migrates model_limits column from varchar(1024) to text
 // This is safe to run multiple times - it checks the column type first
 func migrateTokenModelLimitsToText() error {
-	// SQLite uses type affinity, so TEXT and VARCHAR are effectively the same — no migration needed
+	// SQLite uses type affinity, so TEXT and VARCHAR are effectively the same 鈥?no migration needed
 	if common.UsingSQLite {
 		return nil
 	}
@@ -591,13 +599,13 @@ func CloseDB() error {
 // default charset/collation can store Chinese characters. It allows common
 // Chinese-capable charsets (utf8mb4, utf8, gbk, big5, gb18030) and panics otherwise.
 func checkMySQLChineseSupport(db *gorm.DB) error {
-	// 仅检测：当前库默认字符集/排序规则 + 各表的排序规则（隐含字符集）
+	// 浠呮娴嬶細褰撳墠搴撻粯璁ゅ瓧绗﹂泦/鎺掑簭瑙勫垯 + 鍚勮〃鐨勬帓搴忚鍒欙紙闅愬惈瀛楃闆嗭級
 
 	// Read current schema defaults
 	var schemaCharset, schemaCollation string
 	err := db.Raw("SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = DATABASE()").Row().Scan(&schemaCharset, &schemaCollation)
 	if err != nil {
-		return fmt.Errorf("读取当前库默认字符集/排序规则失败 / Failed to read schema default charset/collation: %v", err)
+		return fmt.Errorf("璇诲彇褰撳墠搴撻粯璁ゅ瓧绗﹂泦/鎺掑簭瑙勫垯澶辫触 / Failed to read schema default charset/collation: %v", err)
 	}
 
 	toLower := func(s string) string { return strings.ToLower(s) }
@@ -618,7 +626,7 @@ func checkMySQLChineseSupport(db *gorm.DB) error {
 			}
 			return strings.HasPrefix(clLower, prefix)
 		}
-		// 如果仅提供了排序规则，尝试按排序规则前缀判断
+		// 濡傛灉浠呮彁渚涗簡鎺掑簭瑙勫垯锛屽皾璇曟寜鎺掑簭瑙勫垯鍓嶇紑鍒ゆ柇
 		for _, prefix := range allowedCharsets {
 			if strings.HasPrefix(clLower, prefix) {
 				return true
@@ -627,30 +635,30 @@ func checkMySQLChineseSupport(db *gorm.DB) error {
 		return false
 	}
 
-	// 1) 当前库默认值必须支持中文
-	if !isChineseCapable(schemaCharset, schemaCollation) {
-		return fmt.Errorf("当前库默认字符集/排序规则不支持中文：schema(%s/%s)。请将库设置为 utf8mb4/utf8/gbk/big5/gb18030 / Schema default charset/collation is not Chinese-capable: schema(%s/%s). Please set to utf8mb4/utf8/gbk/big5/gb18030",
+	// 1) 褰撳墠搴撻粯璁ゅ€煎繀椤绘敮鎸佷腑鏂?
+		if !isChineseCapable(schemaCharset, schemaCollation) {
+		return fmt.Errorf("褰撳墠搴撻粯璁ゅ瓧绗﹂泦/鎺掑簭瑙勫垯涓嶆敮鎸佷腑鏂囷細schema(%s/%s)銆傝灏嗗簱璁剧疆涓?utf8mb4/utf8/gbk/big5/gb18030 / Schema default charset/collation is not Chinese-capable: schema(%s/%s). Please set to utf8mb4/utf8/gbk/big5/gb18030",
 			schemaCharset, schemaCollation, schemaCharset, schemaCollation)
 	}
 
-	// 2) 所有物理表的排序规则（隐含字符集）必须支持中文
+	// 2) 鎵€鏈夌墿鐞嗚〃鐨勬帓搴忚鍒欙紙闅愬惈瀛楃闆嗭級蹇呴』鏀寔涓枃
 	type tableInfo struct {
 		Name      string
 		Collation *string
 	}
 	var tables []tableInfo
 	if err := db.Raw("SELECT TABLE_NAME, TABLE_COLLATION FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'").Scan(&tables).Error; err != nil {
-		return fmt.Errorf("读取表排序规则失败 / Failed to read table collations: %v", err)
+		return fmt.Errorf("璇诲彇琛ㄦ帓搴忚鍒欏け璐?/ Failed to read table collations: %v", err)
 	}
 
 	var badTables []string
 	for _, t := range tables {
-		// NULL 或空表示继承库默认设置，已在上面校验库默认，视为通过
+		// NULL 鎴栫┖琛ㄧず缁ф壙搴撻粯璁よ缃紝宸插湪涓婇潰鏍￠獙搴撻粯璁わ紝瑙嗕负閫氳繃
 		if t.Collation == nil || *t.Collation == "" {
 			continue
 		}
 		cl := *t.Collation
-		// 仅凭排序规则判断是否中文可用
+		// 浠呭嚟鎺掑簭瑙勫垯鍒ゆ柇鏄惁涓枃鍙敤
 		ok := false
 		lower := strings.ToLower(cl)
 		for _, prefix := range allowedCharsets {
@@ -666,13 +674,13 @@ func checkMySQLChineseSupport(db *gorm.DB) error {
 
 	if len(badTables) > 0 {
 		// 限制输出数量以避免日志过长
-		maxShow := 20
+			maxShow := 20
 		shown := badTables
 		if len(shown) > maxShow {
 			shown = shown[:maxShow]
 		}
 		return fmt.Errorf(
-			"存在不支持中文的表，请修复其排序规则/字符集。示例（最多展示 %d 项）：%v / Found tables not Chinese-capable. Please fix their collation/charset. Examples (showing up to %d): %v",
+			"瀛樺湪涓嶆敮鎸佷腑鏂囩殑琛紝璇蜂慨澶嶅叾鎺掑簭瑙勫垯/瀛楃闆嗐€傜ず渚嬶紙鏈€澶氬睍绀?%d 椤癸級锛?v / Found tables not Chinese-capable. Please fix their collation/charset. Examples (showing up to %d): %v",
 			maxShow, shown, maxShow, shown,
 		)
 	}
@@ -708,3 +716,4 @@ func PingDB() error {
 	common.SysLog("Database pinged successfully")
 	return nil
 }
+

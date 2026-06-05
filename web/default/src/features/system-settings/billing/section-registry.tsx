@@ -139,6 +139,7 @@ const BILLING_SECTIONS = [
           MinTopUp: settings.MinTopUp,
           CustomCallbackAddress: settings.CustomCallbackAddress,
           PayMethods: settings.PayMethods,
+          EpayGateway2: settings.EpayGateway2 ?? '{}',
           AmountOptions: settings['payment_setting.amount_options'],
           AmountDiscount: settings['payment_setting.amount_discount'],
           StripeApiSecret: settings.StripeApiSecret,
@@ -151,6 +152,7 @@ const BILLING_SECTIONS = [
           CreemWebhookSecret: settings.CreemWebhookSecret,
           CreemTestMode: settings.CreemTestMode,
           CreemProducts: settings.CreemProducts,
+          PaymentTip: settings.PaymentTip ?? '',
         }}
         waffoDefaultValues={{
           WaffoEnabled: settings.WaffoEnabled ?? false,
@@ -176,13 +178,7 @@ const BILLING_SECTIONS = [
         }}
         waffoPancakeProvisionedStoreID={settings.WaffoPancakeStoreID ?? ''}
         waffoPancakeProvisionedProductID={settings.WaffoPancakeProductID ?? ''}
-        complianceDefaults={{
-          confirmed: settings['payment_setting.compliance_confirmed'] ?? false,
-          termsVersion:
-            settings['payment_setting.compliance_terms_version'] ?? '',
-          confirmedAt: settings['payment_setting.compliance_confirmed_at'] ?? 0,
-          confirmedBy: settings['payment_setting.compliance_confirmed_by'] ?? 0,
-        }}
+
       />
     ),
   },

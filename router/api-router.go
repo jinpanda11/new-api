@@ -71,7 +71,7 @@ func SetApiRouter(router *gin.Engine) {
 			userRoute.POST("/passkey/login/begin", middleware.CriticalRateLimit(), controller.PasskeyLoginBegin)
 			userRoute.POST("/passkey/login/finish", middleware.CriticalRateLimit(), controller.PasskeyLoginFinish)
 			//userRoute.POST("/tokenlog", middleware.CriticalRateLimit(), controller.TokenLog)
-			userRoute.GET("/logout", controller.Logout)
+			// logout moved outside apiRouter to bypass GlobalAPIRateLimit
 			userRoute.POST("/epay/notify", controller.EpayNotify)
 			userRoute.GET("/epay/notify", controller.EpayNotify)
 			userRoute.GET("/groups", controller.GetUserGroups)
@@ -180,6 +180,57 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/subscription/epay/notify", controller.SubscriptionEpayNotify)
 		apiRouter.GET("/subscription/epay/return", controller.SubscriptionEpayReturn)
 		apiRouter.POST("/subscription/epay/return", controller.SubscriptionEpayReturn)
+
+		// Ticket routes
+		ticketRoute := apiRouter.Group("/ticket")
+		ticketRoute.Use(middleware.UserAuth())
+		{
+			ticketRoute.GET("/", controller.GetUserTickets)
+			ticketRoute.POST("/", controller.CreateTicket)
+			ticketRoute.GET("/:id", controller.GetTicket)
+			ticketRoute.POST("/:id/message", controller.AddTicketMessage)
+			ticketRoute.POST("/:id/close", controller.CloseTicket)
+			ticketRoute.POST("/:id/reopen", controller.ReopenTicket)
+		}
+
+		ticketAdminRoute := apiRouter.Group("/ticket/admin")
+		ticketAdminRoute.Use(middleware.AdminAuth())
+		{
+			ticketAdminRoute.GET("/", controller.GetAllTicketsAdmin)
+			ticketAdminRoute.GET("/:id", controller.GetTicketAdmin)
+			ticketAdminRoute.POST("/:id/message", controller.AddTicketMessageAdmin)
+			ticketAdminRoute.PUT("/:id/status", controller.UpdateTicketStatusAdmin)
+			ticketAdminRoute.PUT("/:id/assign", controller.AssignTicketAdmin)
+		}
+
+		// Commission routes - user facing
+		commissionRoute := apiRouter.Group("/commission")
+		commissionRoute.Use(middleware.UserAuth())
+		{
+			commissionRoute.GET("/wallet", controller.GetCommissionWallet)
+			commissionRoute.GET("/tier-info", controller.GetCommissionTierInfo)
+			commissionRoute.GET("/records", controller.GetCommissionRecords)
+			commissionRoute.POST("/transfer", controller.TransferCommissionToBalance)
+			commissionRoute.POST("/withdraw", controller.CreateWithdrawalRequest)
+			commissionRoute.GET("/withdrawals", controller.GetUserWithdrawals)
+			commissionRoute.GET("/downline", controller.GetDownlineUsers)
+		}
+
+		// Commission routes - admin
+		commissionAdminRoute := apiRouter.Group("/commission/admin")
+		commissionAdminRoute.Use(middleware.AdminAuth())
+		{
+			commissionAdminRoute.GET("/config", controller.GetCommissionConfig)
+			commissionAdminRoute.PUT("/config", controller.UpdateCommissionConfig)
+			commissionAdminRoute.GET("/records", controller.GetAllCommissionRecords)
+			commissionAdminRoute.POST("/adjust", controller.AdjustCommission)
+			commissionAdminRoute.GET("/withdrawals", controller.GetAllWithdrawals)
+			commissionAdminRoute.POST("/withdrawals/review", controller.ReviewWithdrawal)
+			commissionAdminRoute.POST("/withdrawals/batch-approve", controller.BatchApproveWithdrawals)
+			commissionAdminRoute.GET("/promoters", controller.GetPromoterList)
+			commissionAdminRoute.GET("/dashboard", controller.GetCommissionDashboard)
+		}
+
 		optionRoute := apiRouter.Group("/option")
 		optionRoute.Use(middleware.RootAuth())
 		{
@@ -397,4 +448,5 @@ func SetApiRouter(router *gin.Engine) {
 			deploymentsRoute.DELETE("/:id", controller.DeleteDeployment)
 		}
 	}
-}
+	router.GET("/api/user/logout", controller.Logout)
+	}

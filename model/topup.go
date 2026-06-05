@@ -133,6 +133,15 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 			return errors.New("充值订单状态错误")
 		}
 
+		// 检查用户是否被禁止充值
+		var chargeUser User
+		if err := tx.Where("id = ?", topUp.UserId).First(&chargeUser).Error; err != nil {
+			return errors.New("用户不存在")
+		}
+		if chargeUser.QuotaForbidden {
+			return errors.New("该用户已被禁止充值")
+		}
+
 		topUp.CompleteTime = common.GetTimestamp()
 		topUp.Status = common.TopUpStatusSuccess
 		err = tx.Save(topUp).Error
@@ -153,6 +162,8 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 		common.SysError("topup failed: " + err.Error())
 		return errors.New("充值失败，请稍后重试")
 	}
+
+	go ProcessCommissionForTopUp(topUp.UserId, topUp.Id, topUp.Money)
 
 	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%d", logger.FormatQuota(int(quota)), topUp.Amount), callerIp, topUp.PaymentMethod, PaymentMethodStripe)
 
@@ -416,6 +427,15 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 			return errors.New("充值订单状态错误")
 		}
 
+		// 检查用户是否被禁止充值
+		var chargeUser User
+		if err := tx.Where("id = ?", topUp.UserId).First(&chargeUser).Error; err != nil {
+			return errors.New("用户不存在")
+		}
+		if chargeUser.QuotaForbidden {
+			return errors.New("该用户已被禁止充值")
+		}
+
 		topUp.CompleteTime = common.GetTimestamp()
 		topUp.Status = common.TopUpStatusSuccess
 		err = tx.Save(topUp).Error
@@ -458,6 +478,8 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 		common.SysError("creem topup failed: " + err.Error())
 		return errors.New("充值失败，请稍后重试")
 	}
+
+	go ProcessCommissionForTopUp(topUp.UserId, topUp.Id, topUp.Money)
 
 	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用Creem充值成功，充值额度: %v，支付金额：%.2f", quota, topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodCreem)
 
@@ -502,6 +524,15 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 			return errors.New("无效的充值额度")
 		}
 
+		// 检查用户是否被禁止充值
+		var chargeUser User
+		if err := tx.Where("id = ?", topUp.UserId).First(&chargeUser).Error; err != nil {
+			return errors.New("用户不存在")
+		}
+		if chargeUser.QuotaForbidden {
+			return errors.New("该用户已被禁止充值")
+		}
+
 		topUp.CompleteTime = common.GetTimestamp()
 		topUp.Status = common.TopUpStatusSuccess
 		if err := tx.Save(topUp).Error; err != nil {
@@ -521,6 +552,8 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 	}
 
 	if quotaToAdd > 0 {
+		go ProcessCommissionForTopUp(topUp.UserId, topUp.Id, topUp.Money)
+
 		RecordTopupLog(topUp.UserId, fmt.Sprintf("Waffo充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodWaffo)
 	}
 
@@ -563,6 +596,15 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 			return errors.New("无效的充值额度")
 		}
 
+		// 检查用户是否被禁止充值
+		var chargeUser User
+		if err := tx.Where("id = ?", topUp.UserId).First(&chargeUser).Error; err != nil {
+			return errors.New("用户不存在")
+		}
+		if chargeUser.QuotaForbidden {
+			return errors.New("该用户已被禁止充值")
+		}
+
 		topUp.CompleteTime = common.GetTimestamp()
 		topUp.Status = common.TopUpStatusSuccess
 		if err := tx.Save(topUp).Error; err != nil {
@@ -582,6 +624,8 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 	}
 
 	if quotaToAdd > 0 {
+		go ProcessCommissionForTopUp(topUp.UserId, topUp.Id, topUp.Money)
+
 		RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Waffo Pancake充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money))
 	}
 

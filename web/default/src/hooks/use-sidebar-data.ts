@@ -18,10 +18,12 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import {
   Activity,
+  BadgePercent,
   Box,
   CreditCard,
   FileText,
   FlaskConical,
+  Gift,
   Key,
   LayoutDashboard,
   ListTodo,
@@ -32,6 +34,7 @@ import {
   User,
   Users,
   Wallet,
+  HelpCircle,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { type SidebarData } from '@/components/layout/types'
@@ -110,6 +113,16 @@ export function useSidebarData(): SidebarData {
             url: '/profile',
             icon: User,
           },
+          {
+            title: t('Tickets'),
+            url: '/tickets',
+            icon: HelpCircle,
+          },
+          {
+            title: t('My Promotions'),
+            url: '/commission',
+            icon: Gift,
+          },
         ],
       },
       {
@@ -140,6 +153,16 @@ export function useSidebarData(): SidebarData {
             title: t('Subscription Management'),
             url: '/subscriptions',
             icon: CreditCard,
+          },
+          {
+            title: t('Ticket Management'),
+            url: '/tickets/manage',
+            icon: HelpCircle,
+          },
+          {
+            title: t('Commission Management'),
+            url: '/commission/manage',
+            icon: BadgePercent,
           },
           {
             title: t('System Settings'),

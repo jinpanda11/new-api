@@ -20,14 +20,11 @@ import * as React from 'react'
 import * as z from 'zod'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Code2, Eye, ShieldAlert } from 'lucide-react'
+import { Code2, Eye } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
 import {
   Alert,
-  AlertAction,
   AlertDescription,
   AlertTitle,
 } from '@/components/ui/alert'
@@ -45,8 +42,6 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { RiskAcknowledgementDialog } from '@/components/risk-acknowledgement-dialog'
-import { confirmPaymentCompliance } from '../api'
 import {
   SettingsForm,
   SettingsSwitchContent,
@@ -86,6 +81,15 @@ const paymentSchema = z.object({
   }, 'Provide a valid callback URL starting with http:// or https://'),
   EpayId: z.string(),
   EpayKey: z.string(),
+  EpayGateway2: z.string().superRefine((value, ctx) => {
+    const error = getJsonError(value)
+    if (error) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: error,
+      })
+    }
+  }),
   Price: z.coerce.number().min(0),
   MinTopUp: z.coerce.number().min(0),
   CustomCallbackAddress: z.string().refine((value) => {
@@ -159,6 +163,7 @@ const paymentSchema = z.object({
   WaffoPancakeMerchantID: z.string(),
   WaffoPancakePrivateKey: z.string(),
   WaffoPancakeReturnURL: z.string(),
+  PaymentTip: z.string(),
 })
 
 type PaymentFormValues = z.infer<typeof paymentSchema>
@@ -168,23 +173,13 @@ type PaymentBaseFormValues = Omit<
   keyof WaffoFormFieldValues | keyof WaffoPancakeSettingsValues
 >
 
-const CURRENT_COMPLIANCE_TERMS_VERSION = 'v1'
-
-type PaymentComplianceDefaults = {
-  confirmed: boolean
-  termsVersion: string
-  confirmedAt: number
-  confirmedBy: number
-}
-
 type PaymentSettingsSectionProps = {
   defaultValues: PaymentBaseFormValues
   waffoDefaultValues: WaffoSettingsValues
   waffoPancakeDefaultValues: WaffoPancakeSettingsValues
   waffoPancakeProvisionedStoreID?: string
   waffoPancakeProvisionedProductID?: string
-  complianceDefaults: PaymentComplianceDefaults
-}
+}  
 
 function parseWaffoPayMethods(value: string): PayMethod[] {
   try {
@@ -201,10 +196,8 @@ export function PaymentSettingsSection({
   waffoPancakeDefaultValues,
   waffoPancakeProvisionedStoreID,
   waffoPancakeProvisionedProductID,
-  complianceDefaults,
 }: PaymentSettingsSectionProps) {
   const { t } = useTranslation()
-  const queryClient = useQueryClient()
   const updateOption = useUpdateOption()
   const initialFormValues = React.useMemo<PaymentFormValues>(
     () => ({
@@ -227,7 +220,8 @@ export function PaymentSettingsSection({
     React.useState(true)
   const [creemProductsVisualMode, setCreemProductsVisualMode] =
     React.useState(true)
-  const [showComplianceDialog, setShowComplianceDialog] = React.useState(false)
+  const [epayGateway2VisualMode, setEpayGateway2VisualMode] = React.useState(true)
+  
   const [waffoPayMethods, setWaffoPayMethods] = React.useState<PayMethod[]>(
     () => parseWaffoPayMethods(waffoDefaultValues.WaffoPayMethods)
   )
@@ -255,79 +249,6 @@ export function PaymentSettingsSection({
     setWaffoPancakeSavedBinding(nextBinding)
   }, [waffoPancakeProvisionedProductID, waffoPancakeProvisionedStoreID])
 
-  const complianceStatements = React.useMemo(
-    () => [
-      t(
-        'You have legally obtained authorization for the connected model APIs, accounts, keys, and quotas.'
-      ),
-      t(
-        'You commit to using upstream APIs, accounts, keys, quotas, and service capabilities only within the scope of lawful authorization obtained from upstream service providers, model service providers, or relevant rights holders, and will not conduct unauthorized resale, trafficking, distribution, or other non-compliant commercialization.'
-      ),
-      t(
-        'If you provide generative AI services to the public in mainland China, you will fulfill legal obligations including filing, security assessment, content safety, complaint handling, generated content labeling, log retention, and personal information protection.'
-      ),
-      t(
-        'You commit not to use this system to implement, assist with, or indirectly implement acts that violate applicable laws and regulations, regulatory requirements, platform rules, public interests, or the lawful rights and interests of third parties.'
-      ),
-      t(
-        'You understand and independently bear legal responsibility arising from deployment, operation, and charging behavior.'
-      ),
-      t(
-        'You understand this compliance reminder is only for risk notice and does not constitute legal advice, a compliance review conclusion, or a guarantee of the legality of your use of this system; you should consult professional legal or compliance advisors based on your actual business scenario.'
-      ),
-    ],
-    [t]
-  )
-
-  const complianceRequiredText = t(
-    'I have read and understood the above compliance reminder, acknowledge the related legal risks, and confirm that I bear legal responsibility arising from deployment, operation, and charging behavior.'
-  )
-  const complianceRequiredTextParts = React.useMemo(
-    () => [
-      {
-        type: 'input' as const,
-        text: t('I have read and understood the above compliance reminder'),
-      },
-      { type: 'static' as const, text: t('，') },
-      {
-        type: 'input' as const,
-        text: t('acknowledge the related legal risks'),
-      },
-      { type: 'static' as const, text: t('，and ') },
-      {
-        type: 'input' as const,
-        text: t(
-          'confirm that I bear legal responsibility arising from deployment'
-        ),
-      },
-      { type: 'static' as const, text: t('、') },
-      {
-        type: 'input' as const,
-        text: t('operation and charging behavior'),
-      },
-    ],
-    [t]
-  )
-
-  const complianceConfirmed =
-    complianceDefaults.confirmed &&
-    complianceDefaults.termsVersion === CURRENT_COMPLIANCE_TERMS_VERSION
-
-  const confirmComplianceMutation = useMutation({
-    mutationFn: confirmPaymentCompliance,
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success(t('Compliance confirmed successfully'))
-        setShowComplianceDialog(false)
-        queryClient.invalidateQueries({ queryKey: ['system-options'] })
-      } else {
-        toast.error(data.message || t('Failed to confirm compliance'))
-      }
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || t('Failed to confirm compliance'))
-    },
-  })
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema) as Resolver<PaymentFormValues>,
@@ -335,6 +256,7 @@ export function PaymentSettingsSection({
     defaultValues: {
       ...initialFormValues,
       PayMethods: formatJsonForEditor(initialFormValues.PayMethods),
+      EpayGateway2: formatJsonForEditor(initialFormValues.EpayGateway2),
       AmountOptions: formatJsonForEditor(initialFormValues.AmountOptions),
       AmountDiscount: formatJsonForEditor(initialFormValues.AmountDiscount),
       CreemProducts: formatJsonForEditor(initialFormValues.CreemProducts),
@@ -407,6 +329,7 @@ export function PaymentSettingsSection({
       MinTopUp: values.MinTopUp,
       CustomCallbackAddress: removeTrailingSlash(values.CustomCallbackAddress),
       PayMethods: values.PayMethods.trim(),
+      EpayGateway2: values.EpayGateway2.trim(),
       AmountOptions: values.AmountOptions.trim(),
       AmountDiscount: values.AmountDiscount.trim(),
       StripeApiSecret: values.StripeApiSecret.trim(),
@@ -439,6 +362,7 @@ export function PaymentSettingsSection({
       WaffoPancakeReturnURL: removeTrailingSlash(
         values.WaffoPancakeReturnURL.trim()
       ),
+      PaymentTip: values.PaymentTip.trim(),
     }
 
     const initial = {
@@ -451,6 +375,7 @@ export function PaymentSettingsSection({
         initialRef.current.CustomCallbackAddress
       ),
       PayMethods: initialRef.current.PayMethods.trim(),
+      EpayGateway2: initialRef.current.EpayGateway2.trim(),
       AmountOptions: initialRef.current.AmountOptions.trim(),
       AmountDiscount: initialRef.current.AmountDiscount.trim(),
       StripeApiSecret: initialRef.current.StripeApiSecret.trim(),
@@ -486,6 +411,7 @@ export function PaymentSettingsSection({
       WaffoPancakeReturnURL: removeTrailingSlash(
         initialRef.current.WaffoPancakeReturnURL.trim()
       ),
+      PaymentTip: initialRef.current.PaymentTip.trim(),
     }
 
     const updates: Array<{ key: string; value: string | number | boolean }> = []
@@ -522,6 +448,13 @@ export function PaymentSettingsSection({
       normalizeJsonForComparison(initial.PayMethods)
     ) {
       updates.push({ key: 'PayMethods', value: sanitized.PayMethods })
+    }
+
+    if (
+      normalizeJsonForComparison(sanitized.EpayGateway2) !==
+      normalizeJsonForComparison(initial.EpayGateway2)
+    ) {
+      updates.push({ key: 'EpayGateway2', value: sanitized.EpayGateway2 })
     }
 
     if (
@@ -683,6 +616,10 @@ export function PaymentSettingsSection({
       updates.push({ key: 'WaffoPayMethods', value: sanitized.WaffoPayMethods })
     }
 
+    if (sanitized.PaymentTip !== initial.PaymentTip) {
+      updates.push({ key: 'PaymentTip', value: sanitized.PaymentTip })
+    }
+
     const hasWaffoPancakeChanges =
       sanitized.WaffoPancakeMerchantID !== initial.WaffoPancakeMerchantID ||
       sanitized.WaffoPancakePrivateKey.length > 0 ||
@@ -734,7 +671,7 @@ export function PaymentSettingsSection({
         }
         setWaffoPancakeSavedBinding(savedBinding)
         setWaffoPancakeSelection(savedBinding)
-        queryClient.invalidateQueries({ queryKey: ['system-options'] })
+        
         toast.success(t('Waffo Pancake settings saved'))
         return
       }
@@ -780,76 +717,10 @@ export function PaymentSettingsSection({
 
   return (
     <SettingsSection title={t('Payment Gateway')}>
-      {!complianceConfirmed ? (
-        <Alert variant='destructive' className='mb-6'>
-          <ShieldAlert className='h-4 w-4' />
-          <AlertTitle>{t('Compliance confirmation required')}</AlertTitle>
-          <AlertDescription>
-            <div className='space-y-3'>
-              <p>
-                {t(
-                  'Payment, redemption codes, subscription plans, and invitation rewards are locked until the root administrator confirms the compliance terms.'
-                )}
-              </p>
-              <ol className='list-decimal space-y-1 pl-5'>
-                {complianceStatements.map((statement) => (
-                  <li key={statement}>{statement}</li>
-                ))}
-              </ol>
-            </div>
-          </AlertDescription>
-          <AlertAction>
-            <Button
-              type='button'
-              size='sm'
-              variant='destructive'
-              onClick={() => setShowComplianceDialog(true)}
-            >
-              {t('Confirm compliance')}
-            </Button>
-          </AlertAction>
-        </Alert>
-      ) : (
-        <Alert className='mb-6'>
-          <AlertTitle>{t('Compliance confirmed')}</AlertTitle>
-          <AlertDescription>
-            {t('Confirmed at {{time}} by user #{{userId}}', {
-              time: complianceDefaults.confirmedAt
-                ? new Date(
-                    complianceDefaults.confirmedAt * 1000
-                  ).toLocaleString()
-                : '-',
-              userId: complianceDefaults.confirmedBy || '-',
-            })}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <RiskAcknowledgementDialog
-        open={showComplianceDialog}
-        onOpenChange={setShowComplianceDialog}
-        title={t('Confirm compliance terms')}
-        description={t(
-          'This confirmation unlocks payment, redemption code, subscription plan, and invitation reward features. Please read the statements carefully.'
-        )}
-        items={complianceStatements}
-        requiredText={complianceRequiredText}
-        requiredTextParts={complianceRequiredTextParts}
-        inputPrompt={t('Please type the following text to confirm:')}
-        inputPlaceholder={t('Type the confirmation text here')}
-        mismatchHint={t('The entered text does not match the required text.')}
-        confirmText={t('Confirm and enable')}
-        isLoading={confirmComplianceMutation.isPending}
-        onConfirm={() => confirmComplianceMutation.mutate()}
-      />
-
-      <Form {...form}>
+<Form {...form}>
         <SettingsForm
           onSubmit={form.handleSubmit(onSubmit)}
-          className={cn(
-            'gap-y-8',
-            !complianceConfirmed && 'pointer-events-none opacity-40'
-          )}
+          className={'gap-y-8'}
           data-no-autosubmit='true'
         >
           <SettingsPageFormActions
@@ -1084,6 +955,38 @@ export function PaymentSettingsSection({
 
           <div className='space-y-4'>
             <div>
+              <h3 className='text-lg font-medium'>{t('Payment Tip')}</h3>
+              <p className='text-muted-foreground text-sm'>
+                {t('Custom message shown in the payment confirmation dialog')}
+              </p>
+            </div>
+
+            <FormField
+              control={form.control}
+              name='PaymentTip'
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Textarea
+                      rows={3}
+                      placeholder={t('e.g. Please complete payment within 30 minutes')}
+                      {...field}
+                      onChange={(event) => field.onChange(event.target.value)}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('Leave empty to show no tip')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <Separator />
+
+          <div className='space-y-4'>
+            <div>
               <h3 className='text-lg font-medium'>{t('Epay Gateway')}</h3>
               <p className='text-muted-foreground text-sm'>
                 {t('Configuration for Epay payment integration')}
@@ -1179,6 +1082,231 @@ export function PaymentSettingsSection({
                 )}
               />
             </div>
+          </div>
+
+          <Separator />
+
+          <div className='space-y-4'>
+            <div>
+              <h3 className='text-lg font-medium'>{t('Epay Gateway 2 (Optional)')}</h3>
+              <p className='text-muted-foreground text-sm'>
+                {t('Configuration for a second Epay payment gateway')}
+              </p>
+            </div>
+
+            <div className='flex items-center gap-2'>
+              <Button
+                type='button'
+                variant={epayGateway2VisualMode ? 'default' : 'outline'}
+                size='sm'
+                onClick={() => setEpayGateway2VisualMode(true)}
+              >
+                {t('Visual')}
+              </Button>
+              <Button
+                type='button'
+                variant={!epayGateway2VisualMode ? 'default' : 'outline'}
+                size='sm'
+                onClick={() => setEpayGateway2VisualMode(false)}
+              >
+                {t('Raw JSON')}
+              </Button>
+            </div>
+
+            {epayGateway2VisualMode ? (
+              <div className='grid gap-6 md:grid-cols-2'>
+                <FormField
+                  control={form.control}
+                  name='EpayGateway2'
+                  render={({ field }) => {
+                    let parsed: {
+                      address?: string
+                      merchant_id?: string
+                      key?: string
+                      name?: string
+                      pay_methods?: Array<{ name: string; type: string; color?: string }>
+                    } = {}
+                    try { parsed = JSON.parse(field.value || '{}') } catch {}
+                    return (
+                      <>
+                        <FormItem>
+                          <FormLabel>{t('Gateway name')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder='Epay2'
+                              value={parsed.name || ''}
+                              onChange={(e) => {
+                                try {
+                                  const v = JSON.parse(field.value || '{}')
+                                  v.name = e.target.value
+                                  field.onChange(JSON.stringify(v, null, 2))
+                                } catch {}
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel>{t('Epay endpoint')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder='https://pay2.example.com'
+                              value={parsed.address || ''}
+                              onChange={(e) => {
+                                try {
+                                  const v = JSON.parse(field.value || '{}')
+                                  v.address = e.target.value
+                                  field.onChange(JSON.stringify(v, null, 2))
+                                } catch {}
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel>{t('Merchant ID')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder='20001'
+                              value={parsed.merchant_id || ''}
+                              onChange={(e) => {
+                                try {
+                                  const v = JSON.parse(field.value || '{}')
+                                  v.merchant_id = e.target.value
+                                  field.onChange(JSON.stringify(v, null, 2))
+                                } catch {}
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel>{t('Secret key')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type='password'
+                              placeholder={t('Enter secret key')}
+                              value={parsed.key || ''}
+                              onChange={(e) => {
+                                try {
+                                  const v = JSON.parse(field.value || '{}')
+                                  v.key = e.target.value
+                                  field.onChange(JSON.stringify(v, null, 2))
+                                } catch {}
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      </>
+                    )
+                  }}
+                />
+              </div>
+            ) : (
+              <FormField
+                control={form.control}
+                name='EpayGateway2'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Epay Gateway 2 Configuration (JSON)')}</FormLabel>
+                    <FormControl>
+                      <textarea
+                        className='min-h-[200px] w-full rounded-md border p-3 font-mono text-sm'
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t('JSON format')}: {`{ "address": "...", "merchant_id": "...", "key": "...", "name": "...", "pay_methods": [...] }`}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {epayGateway2VisualMode && (
+              <FormField
+                control={form.control}
+                name='EpayGateway2'
+                render={({ field }) => {
+                  let parsed: {
+                    pay_methods?: Array<{ name: string; type: string; color?: string; min_topup?: string }>
+                  } = {}
+                  try { parsed = JSON.parse(field.value || '{}') } catch {}
+                  const methods = parsed.pay_methods || []
+                  return (
+                    <FormItem>
+                      <FormLabel>{t('Payment Methods')}</FormLabel>
+                      <div className='space-y-2'>
+                        {methods.map((m, idx) => (
+                          <div key={idx} className='flex items-center gap-2 rounded border p-2'>
+                            <input
+                              className='w-24 rounded border px-2 py-1 text-sm'
+                              value={m.name || ''}
+                              placeholder={t('Name')}
+                              onChange={(e) => {
+                                try {
+                                  const v = JSON.parse(field.value || '{}')
+                                  if (!v.pay_methods) v.pay_methods = []
+                                  if (!v.pay_methods[idx]) v.pay_methods[idx] = {}
+                                  v.pay_methods[idx].name = e.target.value
+                                  field.onChange(JSON.stringify(v, null, 2))
+                                } catch {}
+                              }}
+                            />
+                            <input
+                              className='w-20 rounded border px-2 py-1 text-sm'
+                              value={m.type || ''}
+                              placeholder={t('Type')}
+                              onChange={(e) => {
+                                try {
+                                  const v = JSON.parse(field.value || '{}')
+                                  if (!v.pay_methods) v.pay_methods = []
+                                  if (!v.pay_methods[idx]) v.pay_methods[idx] = {}
+                                  v.pay_methods[idx].type = e.target.value
+                                  field.onChange(JSON.stringify(v, null, 2))
+                                } catch {}
+                              }}
+                            />
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='sm'
+                              onClick={() => {
+                                try {
+                                  const v = JSON.parse(field.value || '{}')
+                                  v.pay_methods = v.pay_methods.filter((_: unknown, i: number) => i !== idx)
+                                  field.onChange(JSON.stringify(v, null, 2))
+                                } catch {}
+                              }}
+                            >
+                              {t('Remove')}
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          onClick={() => {
+                            try {
+                              const v = JSON.parse(field.value || '{}')
+                              if (!v.pay_methods) v.pay_methods = []
+                              v.pay_methods.push({ name: '', type: 'alipay', color: 'rgba(var(--semi-blue-5), 1)' })
+                              field.onChange(JSON.stringify(v, null, 2))
+                            } catch {}
+                          }}
+                        >
+                          {t('Add Method')}
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
+              />
+            )}
           </div>
 
           <Separator />

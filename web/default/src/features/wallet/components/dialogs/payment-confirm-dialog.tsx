@@ -45,6 +45,7 @@ interface PaymentConfirmDialogProps {
   processing: boolean
   discountRate?: number
   usdExchangeRate?: number
+  tip?: string
 }
 
 export function PaymentConfirmDialog({
@@ -58,6 +59,7 @@ export function PaymentConfirmDialog({
   processing,
   discountRate = DEFAULT_DISCOUNT_RATE,
   usdExchangeRate = 1,
+  tip,
 }: PaymentConfirmDialogProps) {
   const { t } = useTranslation()
   const hasDiscount = discountRate > 0 && discountRate < 1 && paymentAmount > 0
@@ -138,6 +140,12 @@ export function PaymentConfirmDialog({
             </div>
           </div>
         </div>
+
+        {tip && (
+          <div className='bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-200'>
+            {tip}
+          </div>
+        )}
 
         <AlertDialogFooter className='grid grid-cols-2 gap-2 sm:flex'>
           <AlertDialogCancel disabled={processing}>

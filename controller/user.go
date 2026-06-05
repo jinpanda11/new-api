@@ -903,6 +903,10 @@ func ManageUser(c *gin.Context) {
 		}
 	case "enable":
 		user.Status = common.UserStatusEnabled
+	case "forbid_recharge":
+		user.QuotaForbidden = true
+	case "allow_recharge":
+		user.QuotaForbidden = false
 	case "delete":
 		if user.Role == common.RoleRootUser {
 			common.ApiErrorI18n(c, i18n.MsgUserCannotDeleteRootUser)
@@ -997,7 +1001,7 @@ func ManageUser(c *gin.Context) {
 	// 避免在 Redis TTL 过期前仍使用旧状态（尤其是禁用后仍可发起请求的问题）。
 	// InvalidateUserCache 会让下一次 GetUserCache 从数据库重新加载，
 	// InvalidateUserTokensCache 则确保令牌侧的缓存也同步刷新。
-	if req.Action == "disable" || req.Action == "promote" || req.Action == "demote" {
+	if req.Action == "disable" || req.Action == "promote" || req.Action == "demote" || req.Action == "forbid_recharge" || req.Action == "allow_recharge" {
 		if err := model.InvalidateUserCache(user.Id); err != nil {
 			common.SysLog(fmt.Sprintf("failed to invalidate user cache for user %d: %s", user.Id, err.Error()))
 		}
@@ -1006,8 +1010,9 @@ func ManageUser(c *gin.Context) {
 		}
 	}
 	clearUser := model.User{
-		Role:   user.Role,
-		Status: user.Status,
+		Role:            user.Role,
+		Status:          user.Status,
+		QuotaForbidden:  user.QuotaForbidden,
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

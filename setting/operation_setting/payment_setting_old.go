@@ -17,6 +17,35 @@ var Price = 7.3
 var MinTopUp = 1
 var USDExchangeRate = 7.3
 
+// EpayGateway2 holds configuration for a second epay gateway.
+// Stored as JSON in the "EpayGateway2" option key.
+type EpayGateway2Config struct {
+	Address    string              `json:"address"`
+	MerchantID string              `json:"merchant_id"`
+	Key        string              `json:"key"`
+	Name       string              `json:"name"`
+	PayMethods []map[string]string `json:"pay_methods"`
+}
+
+var EpayGateway2 = EpayGateway2Config{}
+
+func UpdateEpayGateway2ByJsonString(jsonString string) error {
+	cfg := EpayGateway2Config{}
+	if err := common.Unmarshal([]byte(jsonString), &cfg); err != nil {
+		return err
+	}
+	EpayGateway2 = cfg
+	return nil
+}
+
+func EpayGateway2ToJsonString() string {
+	jsonBytes, err := common.Marshal(EpayGateway2)
+	if err != nil {
+		return "{}"
+	}
+	return string(jsonBytes)
+}
+
 var PayMethods = []map[string]string{
 	{
 		"name":  "支付宝",

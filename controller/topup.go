@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,6 +29,22 @@ func GetTopUpInfo(c *gin.Context) {
 	payMethods := operation_setting.PayMethods
 	if !complianceConfirmed {
 		payMethods = []map[string]string{}
+	}
+
+	// 如果配置了第二个 Epay 网关，将其支付方式添加到列表（带 g2: 前缀）
+	if isEpay2Configured() {
+		gw2 := operation_setting.EpayGateway2
+		for _, m := range gw2.PayMethods {
+			m2 := make(map[string]string, len(m)+2)
+			for k, v := range m {
+				m2[k] = v
+			}
+			m2["type"] = "g2:" + m["type"]
+			if _, ok := m2["name"]; ok && gw2.Name != "" {
+				m2["name"] = m["name"] + " (" + gw2.Name + ")"
+			}
+			payMethods = append(payMethods, m2)
+		}
 	}
 
 	// 如果启用了 Stripe 支付，添加到支付方法列表
@@ -119,6 +136,7 @@ func GetTopUpInfo(c *gin.Context) {
 		"amount_options":          operation_setting.GetPaymentSetting().AmountOptions,
 		"discount":                operation_setting.GetPaymentSetting().AmountDiscount,
 		"topup_link":              common.TopUpLink,
+		"payment_tip":            common.OptionMap["PaymentTip"],
 	}
 	common.ApiSuccess(c, data)
 }
@@ -140,6 +158,43 @@ func GetEpayClient() *epay.Client {
 		PartnerID: operation_setting.EpayId,
 		Key:       operation_setting.EpayKey,
 	}, operation_setting.PayAddress)
+	if err != nil {
+		return nil
+	}
+	return withUrl
+}
+
+func isEpay2Configured() bool {
+	g := operation_setting.EpayGateway2
+	return strings.TrimSpace(g.Address) != "" &&
+		strings.TrimSpace(g.MerchantID) != "" &&
+		strings.TrimSpace(g.Key) != "" &&
+		len(g.PayMethods) > 0
+}
+
+func isEpay2PayMethod(method string) bool {
+	if !strings.HasPrefix(method, "g2:") {
+		return false
+	}
+	actualType := strings.TrimPrefix(method, "g2:")
+	g := operation_setting.EpayGateway2
+	for _, m := range g.PayMethods {
+		if m["type"] == actualType {
+			return true
+		}
+	}
+	return false
+}
+
+func GetEpay2Client() *epay.Client {
+	g := operation_setting.EpayGateway2
+	if g.Address == "" || g.MerchantID == "" || g.Key == "" {
+		return nil
+	}
+	withUrl, err := epay.NewClient(&epay.Config{
+		PartnerID: g.MerchantID,
+		Key:       g.Key,
+	}, g.Address)
 	if err != nil {
 		return nil
 	}
@@ -211,22 +266,37 @@ func RequestEpay(c *gin.Context) {
 	}
 
 	if !operation_setting.ContainsPayMethod(req.PaymentMethod) {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "支付方式不存在"})
-		return
+		// 检查是否是第二个 Epay 网关的支付方式
+		if !isEpay2Configured() || !isEpay2PayMethod(req.PaymentMethod) {
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "支付方式不存在"})
+			return
+		}
 	}
 
 	callBackAddress := service.GetCallbackAddress()
 	returnUrl, _ := url.Parse(paymentReturnPath("/console/log"))
 	notifyUrl, _ := url.Parse(callBackAddress + "/api/user/epay/notify")
-	tradeNo := fmt.Sprintf("%s%d", common.GetRandomString(6), time.Now().Unix())
-	tradeNo = fmt.Sprintf("USR%dNO%s", id, tradeNo)
-	client := GetEpayClient()
+
+	// 判断使用哪个网关
+	isGateway2 := strings.HasPrefix(req.PaymentMethod, "g2:")
+	var client *epay.Client
+	var tradeNo string
+	var actualPaymentMethod string
+	if isGateway2 {
+		client = GetEpay2Client()
+		actualPaymentMethod = strings.TrimPrefix(req.PaymentMethod, "g2:")
+		tradeNo = fmt.Sprintf("U2R%dNO%s%d", id, common.GetRandomString(6), time.Now().Unix())
+	} else {
+		client = GetEpayClient()
+		actualPaymentMethod = req.PaymentMethod
+		tradeNo = fmt.Sprintf("USR%dNO%s%d", id, common.GetRandomString(6), time.Now().Unix())
+	}
 	if client == nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前管理员未配置支付信息"})
 		return
 	}
 	uri, params, err := client.Purchase(&epay.PurchaseArgs{
-		Type:           req.PaymentMethod,
+		Type:           actualPaymentMethod,
 		ServiceTradeNo: tradeNo,
 		Name:           fmt.Sprintf("TUC%d", req.Amount),
 		Money:          strconv.FormatFloat(payMoney, 'f', 2, 64),
@@ -308,7 +378,7 @@ func UnlockOrder(tradeNo string) {
 }
 
 func EpayNotify(c *gin.Context) {
-	if !isEpayWebhookEnabled() {
+	if !isEpayWebhookEnabled() && !isEpay2Configured() {
 		logger.LogWarn(c.Request.Context(), fmt.Sprintf("易支付 webhook 被拒绝 reason=webhook_disabled path=%q client_ip=%s", c.Request.RequestURI, c.ClientIP()))
 		_, _ = c.Writer.Write([]byte("fail"))
 		return
@@ -341,9 +411,19 @@ func EpayNotify(c *gin.Context) {
 		_, _ = c.Writer.Write([]byte("fail"))
 		return
 	}
-	client := GetEpayClient()
+
+	// 根据 out_trade_no 前缀判断使用哪个网关
+	tradeNoFromParams := params["out_trade_no"]
+	useGateway2 := strings.HasPrefix(tradeNoFromParams, "U2R")
+
+	var client *epay.Client
+	if useGateway2 {
+		client = GetEpay2Client()
+	} else {
+		client = GetEpayClient()
+	}
 	if client == nil {
-		logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 client 未初始化 path=%q client_ip=%s", c.Request.RequestURI, c.ClientIP()))
+		logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 client 未初始化 path=%q client_ip=%s gw2=%v", c.Request.RequestURI, c.ClientIP(), useGateway2))
 		_, err := c.Writer.Write([]byte("fail"))
 		if err != nil {
 			logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 webhook 响应写入失败 path=%q client_ip=%s error=%q", c.Request.RequestURI, c.ClientIP(), err.Error()))
