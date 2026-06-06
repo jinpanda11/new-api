@@ -35,7 +35,6 @@ interface AffiliateRewardsCardProps {
   commissionBalance?: number
   commissionTotalEarned?: number
   onCommissionTransfer?: () => void
-  onTransfer: () => void
   complianceConfirmed?: boolean
   loading?: boolean
 }
@@ -46,7 +45,6 @@ export function AffiliateRewardsCard({
   commissionBalance = 0,
   commissionTotalEarned = 0,
   onCommissionTransfer,
-  onTransfer,
   complianceConfirmed = true,
   loading,
 }: AffiliateRewardsCardProps) {
@@ -67,7 +65,6 @@ export function AffiliateRewardsCard({
   }
 
   const hasCommission = commissionBalance > 0
-  const hasPendingAffQuota = (user?.aff_quota ?? 0) > 0
 
   return (
     <Card className='bg-muted/20 py-0'>
@@ -88,11 +85,10 @@ export function AffiliateRewardsCard({
           </div>
         </div>
 
-        <div className='grid grid-cols-3 gap-1.5 text-center'>
+        <div className='grid grid-cols-2 gap-1.5 text-center'>
           {[
             [t('Pending'), formatUSD(commissionBalance)],
             [t('Total Earned'), formatUSD(commissionTotalEarned)],
-            [t('Invites'), String(user?.aff_count ?? 0)],
           ].map(([label, value]) => (
             <div key={label}>
               <div className='text-muted-foreground truncate text-[10px] font-medium tracking-wider uppercase'>
@@ -122,15 +118,6 @@ export function AffiliateRewardsCard({
           {hasCommission && onCommissionTransfer ? (
             <Button
               onClick={onCommissionTransfer}
-              disabled={!complianceConfirmed}
-              className='h-9 shrink-0 px-3'
-              size='sm'
-            >
-              {t('Transfer to Balance')}
-            </Button>
-          ) : hasPendingAffQuota ? (
-            <Button
-              onClick={onTransfer}
               disabled={!complianceConfirmed}
               className='h-9 shrink-0 px-3'
               size='sm'

@@ -1,8 +1,11 @@
 package model
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -41,6 +44,16 @@ type CommissionRecord struct {
 	UpdatedAt  int64   `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
+// CommissionErrorLog records failed commission processing attempts for retry/investigation
+type CommissionErrorLog struct {
+	Id        int     `json:"id"`
+	TopUpId   int     `json:"topup_id" gorm:"index"`
+	UserId    int     `json:"user_id" gorm:"index"`
+	Money     float64 `json:"money"`
+	Error     string  `json:"error" gorm:"type:text"`
+	CreatedAt int64   `json:"created_at" gorm:"autoCreateTime"`
+}
+
 // CommissionWallet stores user's commission balance
 type CommissionWallet struct {
 	Id             int     `json:"id"`
@@ -73,8 +86,9 @@ const CommissionConfigKey = "commission_config"
 const DefaultCommissionRate = 0.05
 
 type CommissionConfig struct {
-	DefaultRate float64         `json:"default_rate"`
-	Tiers       []CommissionTier `json:"tiers"`
+	DefaultRate    float64          `json:"default_rate"`
+	Tiers          []CommissionTier `json:"tiers"`
+	MinConsumption float64          `json:"min_consumption"` // minimum total topup money to count as active affiliate
 }
 
 func GetDefaultCommissionConfig() *CommissionConfig {
@@ -87,40 +101,72 @@ func GetDefaultCommissionConfig() *CommissionConfig {
 			{MinUsers: 50, Rate: 0.15},
 			{MinUsers: 100, Rate: 0.20},
 		},
+		MinConsumption: 10,
 	}
 }
 
-// GetActiveCount returns the number of active referrals (downlines who have recharged)
-func GetUserActiveAffCount(userId int) (int, error) {
+// GetUserActiveAffCount returns the number of active referrals who have recharged at least minConsumption in total.
+func GetUserActiveAffCount(userId int, minConsumption float64) (int, error) {
+	// Try Redis cache first
+	if common.RedisEnabled {
+		cacheKey := fmt.Sprintf("commission:active_aff:%d", userId)
+		if cached, err := common.RDB.Get(context.Background(), cacheKey).Result(); err == nil {
+			if count, err := strconv.Atoi(cached); err == nil {
+				return count, nil
+			}
+		}
+	}
+
 	var count int64
-	err := DB.Model(&TopUp{}).
+	subQuery := DB.Table("top_ups").
+		Select("top_ups.user_id").
 		Joins("JOIN users ON users.id = top_ups.user_id AND users.inviter_id = ?", userId).
 		Where("top_ups.status = ?", common.TopUpStatusSuccess).
-		Distinct("top_ups.user_id").
-		Count(&count).Error
+		Group("top_ups.user_id").
+		Having("SUM(top_ups.money) >= ?", minConsumption)
+
+	err := DB.Table("(?) AS active_users", subQuery).Count(&count).Error
 	if err != nil {
 		return 0, err
 	}
-	return int(count), nil
-}
 
-// GetCommissionRate determines the commission rate for a user based on active referrals
-func GetUserCommissionRate(userId int) (float64, int, error) {
-	activeCount, err := GetUserActiveAffCount(userId)
-	if err != nil {
-		return GetDefaultCommissionConfig().DefaultRate, 0, err
+	result := int(count)
+
+	// Cache for 5 minutes
+	if common.RedisEnabled {
+		common.RDB.Set(context.Background(), fmt.Sprintf("commission:active_aff:%d", userId), result, 5*time.Minute)
 	}
 
+	return result, nil
+}
+
+// InvalidateActiveAffCache removes cached active_aff_count for a user.
+func InvalidateActiveAffCache(userId int) {
+	if common.RedisEnabled && userId > 0 {
+		common.RDB.Del(context.Background(), fmt.Sprintf("commission:active_aff:%d", userId))
+	}
+}
+
+// loadCommissionConfig returns the effective commission config.
+func loadCommissionConfig() *CommissionConfig {
 	config := GetDefaultCommissionConfig()
-	// Try to load from options
 	if v, ok := common.OptionMap[CommissionConfigKey]; ok && v != "" {
 		parsed := &CommissionConfig{}
 		if err := common.UnmarshalJsonStr(v, parsed); err == nil {
 			config = parsed
 		}
 	}
+	return config
+}
 
-	// Find the best tier
+// GetCommissionRate determines the commission rate for a user based on active referrals
+func GetUserCommissionRate(userId int) (float64, int, error) {
+	config := loadCommissionConfig()
+	activeCount, err := GetUserActiveAffCount(userId, config.MinConsumption)
+	if err != nil {
+		return config.DefaultRate, 0, err
+	}
+
 	bestRate := config.DefaultRate
 	for _, tier := range config.Tiers {
 		if activeCount >= tier.MinUsers {
@@ -132,26 +178,16 @@ func GetUserCommissionRate(userId int) (float64, int, error) {
 
 // GetNextTierInfo finds the next tier threshold
 func GetNextTierInfo(userId int) (currentRate float64, activeCount int, nextMinUsers int, nextRate float64, err error) {
-	activeCount, err = GetUserActiveAffCount(userId)
+	config := loadCommissionConfig()
+	activeCount, err = GetUserActiveAffCount(userId, config.MinConsumption)
 	if err != nil {
 		return 0, 0, 0, 0, err
 	}
 
-	config := GetDefaultCommissionConfig()
-	if v, ok := common.OptionMap[CommissionConfigKey]; ok && v != "" {
-		parsed := &CommissionConfig{}
-		if err := common.UnmarshalJsonStr(v, parsed); err == nil {
-			config = parsed
-		}
-	}
-
-	// Sort tiers by MinUsers ascending
-	tiers := config.Tiers
-	// Find current best rate and next tier
 	bestRate := config.DefaultRate
 	nextMin := 0
 	nextRt := 0.0
-	for i, tier := range tiers {
+	for _, tier := range config.Tiers {
 		if activeCount >= tier.MinUsers {
 			bestRate = tier.Rate
 		}
@@ -159,7 +195,6 @@ func GetNextTierInfo(userId int) (currentRate float64, activeCount int, nextMinU
 			nextMin = tier.MinUsers
 			nextRt = tier.Rate
 		}
-		_ = i
 	}
 
 	return bestRate, activeCount, nextMin, nextRt, nil
@@ -202,9 +237,9 @@ func CreateCommissionRecord(record *CommissionRecord) error {
 		if err := tx.Create(record).Error; err != nil {
 			return err
 		}
-		// Update wallet
+		// Lock and update wallet to prevent lost updates under concurrent commissions
 		var wallet CommissionWallet
-		err := tx.Where("user_id = ?", record.UserId).First(&wallet).Error
+		err := tx.Set("gorm:query_option", "FOR UPDATE").Where("user_id = ?", record.UserId).First(&wallet).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				wallet = CommissionWallet{
@@ -283,10 +318,19 @@ func GetUserCommissionStats(userId int) (monthlyEarned float64, totalEarned floa
 
 // ProcessCommissionForTopUp creates commission records when a recharge completes
 func ProcessCommissionForTopUp(topUpUserId int, topUpId int, money float64) error {
+	// Prevent duplicate commission for the same topup
+	if topUpId > 0 {
+		var exists int64
+		if err := DB.Model(&CommissionRecord{}).Where("topup_id = ?", topUpId).Count(&exists).Error; err == nil && exists > 0 {
+			return nil
+		}
+	}
+
 	// Find the user
 	var user User
 	if err := DB.First(&user, topUpUserId).Error; err != nil {
-		return nil // silently skip if user not found
+		logCommissionError(topUpId, topUpUserId, money, "user not found: "+err.Error())
+		return nil
 	}
 
 	// If user has no inviter, no commission
@@ -294,14 +338,13 @@ func ProcessCommissionForTopUp(topUpUserId int, topUpId int, money float64) erro
 		return nil
 	}
 
-	// Self-referral is allowed
 	inviterId := user.InviterId
 
 	// Get inviter's commission rate
 	rate, _, err := GetUserCommissionRate(inviterId)
 	if err != nil {
-		common.SysError("failed to get commission rate: " + err.Error())
-		return nil // silently skip on error
+		logCommissionError(topUpId, topUpUserId, money, "failed to get commission rate: "+err.Error())
+		return nil
 	}
 
 	if rate <= 0 {
@@ -327,7 +370,28 @@ func ProcessCommissionForTopUp(topUpUserId int, topUpId int, money float64) erro
 		Status:     CommissionStatusSettled,
 	}
 
-	return CreateCommissionRecord(record)
+	if err := CreateCommissionRecord(record); err != nil {
+		logCommissionError(topUpId, topUpUserId, money, "create record failed: "+err.Error())
+		return err
+	}
+
+	// Invalidate cached active_aff_count for the inviter
+	InvalidateActiveAffCache(inviterId)
+
+	return nil
+}
+
+func logCommissionError(topUpId int, userId int, money float64, errMsg string) {
+	common.SysError(fmt.Sprintf("commission failed: topup_id=%d user_id=%d money=%.2f error=%s", topUpId, userId, money, errMsg))
+	entry := &CommissionErrorLog{
+		TopUpId: topUpId,
+		UserId:  userId,
+		Money:   money,
+		Error:   errMsg,
+	}
+	if err := DB.Create(entry).Error; err != nil {
+		common.SysError("failed to persist commission error log: " + err.Error())
+	}
 }
 
 // ============================================================================
@@ -430,7 +494,6 @@ func ApproveWithdrawal(id int, adminId int) error {
 }
 
 func RejectWithdrawal(id int, adminId int, note string) error {
-	// Need to refund balance
 	return DB.Transaction(func(tx *gorm.DB) error {
 		var req WithdrawalRequest
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&req, id).Error; err != nil {
@@ -451,9 +514,20 @@ func RejectWithdrawal(id int, adminId int, note string) error {
 		}
 
 		// Refund the balance
-		return tx.Model(&CommissionWallet{}).
+		if err := tx.Model(&CommissionWallet{}).
 			Where("user_id = ?", req.UserId).
-			Update("balance", gorm.Expr("balance + ?", req.Amount)).Error
+			Update("balance", gorm.Expr("balance + ?", req.Amount)).Error; err != nil {
+			return err
+		}
+
+		// Create a refund record for audit trail
+		refundRecord := &CommissionRecord{
+			UserId:  req.UserId,
+			Amount:  req.Amount,
+			Status:  CommissionStatusAdjusted,
+			Remark:  fmt.Sprintf("提现拒绝退款 (withdrawal_id=%d review_note=%s)", id, note),
+		}
+		return tx.Create(refundRecord).Error
 	})
 }
 
@@ -560,7 +634,6 @@ type PromoterItem struct {
 	TotalEarned    float64 `json:"total_earned"`
 	TotalWithdrawn float64 `json:"total_withdrawn"`
 	ActiveAffCount int     `json:"active_aff_count"`
-	AffCount       int     `json:"aff_count"`
 	CommissionRate float64 `json:"commission_rate"`
 	CreatedAt      int64   `json:"created_at"`
 }
@@ -569,13 +642,14 @@ func GetPromoterList(page, pageSize int, keyword string) ([]PromoterItem, int64,
 	var items []PromoterItem
 	var total int64
 
+	config := loadCommissionConfig()
+
 	query := DB.Table("commission_wallets").
 		Select(`commission_wallets.user_id as id, users.username, users.email,
 				commission_wallets.balance as wallet_balance,
 				commission_wallets.total_earned,
 				commission_wallets.total_withdrawn,
 				COALESCE(active_counts.cnt, 0) as active_aff_count,
-				users.aff_count,
 				users.created_at`).
 		Joins("LEFT JOIN users ON users.id = commission_wallets.user_id").
 		Joins(`LEFT JOIN (
@@ -584,7 +658,8 @@ func GetPromoterList(page, pageSize int, keyword string) ([]PromoterItem, int64,
 			JOIN top_ups ON top_ups.user_id = users.id AND top_ups.status = ?
 			WHERE users.inviter_id > 0
 			GROUP BY users.inviter_id
-		) active_counts ON active_counts.inviter_id = commission_wallets.user_id`, common.TopUpStatusSuccess)
+			HAVING SUM(top_ups.money) >= ?
+		) active_counts ON active_counts.inviter_id = commission_wallets.user_id`, common.TopUpStatusSuccess, config.MinConsumption)
 
 	if keyword != "" {
 		query = query.Where("users.username LIKE ? OR users.email LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
@@ -598,14 +673,6 @@ func GetPromoterList(page, pageSize int, keyword string) ([]PromoterItem, int64,
 		return nil, 0, err
 	}
 
-	// Calculate commission rate for each promoter based on their active affiliate count
-	config := GetDefaultCommissionConfig()
-	if v, ok := common.OptionMap[CommissionConfigKey]; ok && v != "" {
-		parsed := &CommissionConfig{}
-		if err := common.UnmarshalJsonStr(v, parsed); err == nil {
-			config = parsed
-		}
-	}
 	for i := range items {
 		rate := config.DefaultRate
 		for _, tier := range config.Tiers {
