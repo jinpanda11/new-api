@@ -18,7 +18,6 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { Share2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatQuota } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -26,9 +25,16 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { CopyButton } from '@/components/copy-button'
 import type { UserWalletData } from '../types'
 
+const formatUSD = (val: number) => {
+  return `$${val.toFixed(2)}`
+}
+
 interface AffiliateRewardsCardProps {
   user: UserWalletData | null
   affiliateLink: string
+  commissionBalance?: number
+  commissionTotalEarned?: number
+  onCommissionTransfer?: () => void
   onTransfer: () => void
   complianceConfirmed?: boolean
   loading?: boolean
@@ -37,6 +43,9 @@ interface AffiliateRewardsCardProps {
 export function AffiliateRewardsCard({
   user,
   affiliateLink,
+  commissionBalance = 0,
+  commissionTotalEarned = 0,
+  onCommissionTransfer,
   onTransfer,
   complianceConfirmed = true,
   loading,
@@ -57,7 +66,8 @@ export function AffiliateRewardsCard({
     )
   }
 
-  const hasRewards = (user?.aff_quota ?? 0) > 0
+  const hasCommission = commissionBalance > 0
+  const hasPendingAffQuota = (user?.aff_quota ?? 0) > 0
 
   return (
     <Card className='bg-muted/20 py-0'>
@@ -80,8 +90,8 @@ export function AffiliateRewardsCard({
 
         <div className='grid grid-cols-3 gap-1.5 text-center'>
           {[
-            [t('Pending'), formatQuota(user?.aff_quota ?? 0)],
-            [t('Total Earned'), formatQuota(user?.aff_history_quota ?? 0)],
+            [t('Pending'), formatUSD(commissionBalance)],
+            [t('Total Earned'), formatUSD(commissionTotalEarned)],
             [t('Invites'), String(user?.aff_count ?? 0)],
           ].map(([label, value]) => (
             <div key={label}>
@@ -109,7 +119,16 @@ export function AffiliateRewardsCard({
             tooltip={t('Copy referral link')}
             aria-label={t('Copy referral link')}
           />
-          {hasRewards && (
+          {hasCommission && onCommissionTransfer ? (
+            <Button
+              onClick={onCommissionTransfer}
+              disabled={!complianceConfirmed}
+              className='h-9 shrink-0 px-3'
+              size='sm'
+            >
+              {t('Transfer to Balance')}
+            </Button>
+          ) : hasPendingAffQuota ? (
             <Button
               onClick={onTransfer}
               disabled={!complianceConfirmed}
@@ -118,7 +137,7 @@ export function AffiliateRewardsCard({
             >
               {t('Transfer to Balance')}
             </Button>
-          )}
+          ) : null}
         </div>
         {!complianceConfirmed ? (
           <p className='text-muted-foreground text-xs lg:col-span-3'>

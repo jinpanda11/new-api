@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Copy, Download, Gift, TrendingUp, Users, Wallet } from 'lucide-react'
+import { Download, Gift, TrendingUp, Users, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { SectionPageLayout } from '@/components/layout'
 import { Button } from '@/components/ui/button'
+import { useAuthStore } from '@/stores/auth-store'
+import { CopyButton } from '@/components/copy-button'
 import {
   getCommissionWallet,
   getCommissionTierInfo,
@@ -57,9 +59,11 @@ export function Commission() {
   const [withdrawPayInfo, setWithdrawPayInfo] = useState('')
   const [withdrawing, setWithdrawing] = useState(false)
 
-  // Invite info from localStorage
-  const userId = typeof window !== 'undefined' ? Number(localStorage.getItem('user_id') || '0') : 0
-  const inviteLink = `${window.location.origin}/register?aff=${userId}`
+  // Invite link from auth store (uses aff_code, not numeric user ID)
+  const { user } = useAuthStore(state => state.auth)
+  const inviteLink = user?.aff_code
+    ? `${window.location.origin}/register?aff=${user.aff_code}`
+    : `${window.location.origin}/register`
 
   const fetchWallet = useCallback(async () => {
     setWalletLoading(true)
@@ -140,11 +144,6 @@ export function Commission() {
     fetchDownlines()
   }, [fetchWallet, fetchTierInfo, fetchRecords, fetchWithdrawals, fetchDownlines])
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(inviteLink)
-    toast.success(t('Link copied'))
-  }
-
   const handleRecordsPageChange = (page: number) => {
     fetchRecords(page)
   }
@@ -198,8 +197,8 @@ export function Commission() {
   }
 
   const formatMoney = (val: number | undefined | null) => {
-    if (val == null) return '¥0.00'
-    return `¥${val.toFixed(2)}`
+    if (val == null) return '$0.00'
+    return `$${val.toFixed(2)}`
   }
 
   const renderPagination = (page: number, total: number, onPageChange: (p: number) => void) => {
@@ -232,9 +231,10 @@ export function Commission() {
   }
 
   return (
-    <SectionPageLayout>
-      <SectionPageLayout.Title>{t('My Promotions')}</SectionPageLayout.Title>
-      <SectionPageLayout.Content>
+    <>
+      <SectionPageLayout>
+        <SectionPageLayout.Title>{t('My Promotions')}</SectionPageLayout.Title>
+          <SectionPageLayout.Content>
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5">
           {/* Wallet Card */}
           <div className="rounded-lg border bg-card p-5">
@@ -307,10 +307,12 @@ export function Commission() {
                   <code className="flex-1 rounded bg-muted px-3 py-1.5 text-sm break-all">
                     {inviteLink}
                   </code>
-                  <Button variant="outline" size="sm" onClick={handleCopyLink}>
-                    <Copy className="h-4 w-4 mr-1" />
-                    {t('Copy')}
-                  </Button>
+                  <CopyButton
+                    value={inviteLink}
+                    variant="outline"
+                    size="sm"
+                    tooltip={t('Copy referral link')}
+                  />
                 </div>
               </div>
             </div>
@@ -430,15 +432,15 @@ export function Commission() {
                             <td className="p-3">
                               <span
                                 className={`inline-block rounded-full px-2 py-0.5 text-xs ${
-                                  r.status === 'completed'
+                                  r.status === 'settled' || r.status === 'completed'
                                     ? 'bg-green-100 text-green-700'
                                     : r.status === 'pending'
                                       ? 'bg-yellow-100 text-yellow-700'
                                       : 'bg-gray-100 text-gray-700'
                                 }`}
                               >
-                                {r.status === 'completed'
-                                  ? t('Completed')
+                                {r.status === 'settled' || r.status === 'completed'
+                                  ? t('Paid')
                                   : r.status === 'pending'
                                     ? t('Pending')
                                     : r.status}
@@ -574,9 +576,10 @@ export function Commission() {
           </div>
         </div>
       </SectionPageLayout.Content>
+    </SectionPageLayout>
 
-      {/* Withdrawal Dialog */}
-      {withdrawDialogOpen && (
+    {/* Withdrawal Dialog */}
+    {withdrawDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
             <h3 className="text-lg font-semibold mb-4">{t('Withdraw Commission')}</h3>
@@ -637,6 +640,6 @@ export function Commission() {
           </div>
         </div>
       )}
-    </SectionPageLayout>
+    </>
   )
 }

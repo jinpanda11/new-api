@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BarChart3, Settings, Users, Wallet, Check, X, Search } from 'lucide-react'
+import { BarChart3, Settings, Users, Wallet, Check, X, Search, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
 import { SectionPageLayout } from '@/components/layout'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import {
   updateCommissionConfig,
   getPromoterList,
   getAllWithdrawals,
+  getAllCommissionRecords,
   reviewWithdrawal,
 } from '../api'
 import type {
@@ -17,15 +18,23 @@ import type {
   CommissionConfig,
   PromoterItem,
   WithdrawalRequest,
+  CommissionRecord,
 } from '../types'
 
 export function CommissionManage() {
   const { t } = useTranslation()
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'config' | 'promoters' | 'withdrawals'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'records' | 'config' | 'promoters' | 'withdrawals'>('dashboard')
 
   // Dashboard state
   const [dashboard, setDashboard] = useState<CommissionDashboardStats | null>(null)
   const [dashLoading, setDashLoading] = useState(false)
+
+  // Records state
+  const [records, setRecords] = useState<CommissionRecord[]>([])
+  const [recordsTotal, setRecordsTotal] = useState(0)
+  const [recordsPage, setRecordsPage] = useState(1)
+  const [recordsLoading, setRecordsLoading] = useState(false)
+  const [recordsFilter, setRecordsFilter] = useState('')
 
   // Config state
   const [config, setConfig] = useState<CommissionConfig | null>(null)
@@ -106,12 +115,28 @@ export function CommissionManage() {
     setWithdrawalsLoading(false)
   }, [])
 
+  const fetchRecords = useCallback(async (page = 1, status = '') => {
+    setRecordsLoading(true)
+    try {
+      const res = await getAllCommissionRecords(page, 20, 0, status)
+      if (res.success && res.data) {
+        setRecords((res.data.records || []) as CommissionRecord[])
+        setRecordsTotal(res.data.total || 0)
+        setRecordsPage(res.data.page || 1)
+      }
+    } catch {
+      // silently fail
+    }
+    setRecordsLoading(false)
+  }, [])
+
   useEffect(() => {
     fetchDashboard()
+    fetchRecords()
     fetchConfig()
     fetchPromoters()
     fetchWithdrawals()
-  }, [fetchDashboard, fetchConfig, fetchPromoters, fetchWithdrawals])
+  }, [fetchDashboard, fetchRecords, fetchConfig, fetchPromoters, fetchWithdrawals])
 
   const handleSaveConfig = async () => {
     setConfigSaving(true)
@@ -152,8 +177,8 @@ export function CommissionManage() {
   }
 
   const formatMoney = (val: number | undefined | null) => {
-    if (val == null) return '¥0.00'
-    return `¥${val.toFixed(2)}`
+    if (val == null) return '$0.00'
+    return `$${val.toFixed(2)}`
   }
 
   const formatDateTime = (ts: number | undefined) => {
@@ -185,7 +210,7 @@ export function CommissionManage() {
       <SectionPageLayout.Title>{t('Commission Management')}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
         <div className="flex border-b mb-4">
-          {(['dashboard', 'config', 'promoters', 'withdrawals'] as const).map((tab) => (
+          {(['dashboard', 'records', 'config', 'promoters', 'withdrawals'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -196,10 +221,12 @@ export function CommissionManage() {
               }`}
             >
               {tab === 'dashboard' && <BarChart3 className="h-4 w-4" />}
+              {tab === 'records' && <Receipt className="h-4 w-4" />}
               {tab === 'config' && <Settings className="h-4 w-4" />}
               {tab === 'promoters' && <Users className="h-4 w-4" />}
               {tab === 'withdrawals' && <Wallet className="h-4 w-4" />}
               {tab === 'dashboard' && t('Dashboard')}
+              {tab === 'records' && t('Commission Records')}
               {tab === 'config' && t('Commission Config')}
               {tab === 'promoters' && t('Promoters')}
               {tab === 'withdrawals' && t('Withdrawals Review')}
@@ -285,6 +312,92 @@ export function CommissionManage() {
                 )}
               </>
             ) : null}
+          </div>
+        )}
+
+        {/* Records Tab */}
+        {activeTab === 'records' && (
+          <div className="rounded-lg border bg-card">
+            <div className="flex items-center gap-2 p-3 border-b">
+              {['', 'pending', 'paid', 'cancelled'].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => {
+                    setRecordsFilter(s)
+                    fetchRecords(1, s)
+                  }}
+                  className={`px-3 py-1 text-sm rounded-full border ${
+                    recordsFilter === s
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {s === '' ? t('All') : s === 'pending' ? t('Pending') : s === 'paid' ? t('Paid') : t('Cancelled')}
+                </button>
+              ))}
+              <span className="text-sm text-muted-foreground ml-auto">
+                {t('Total')}: {recordsTotal}
+              </span>
+            </div>
+            {recordsLoading ? (
+              <div className="p-5 space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-10 animate-pulse rounded bg-muted" />
+                ))}
+              </div>
+            ) : records.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">{t('No commission records')}</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-3 font-medium">ID</th>
+                      <th className="text-left p-3 font-medium">{t('Promoter')}</th>
+                      <th className="text-left p-3 font-medium">{t('From User')}</th>
+                      <th className="text-left p-3 font-medium">{t('Amount')}</th>
+                      <th className="text-left p-3 font-medium">{t('Rate')}</th>
+                      <th className="text-left p-3 font-medium">{t('Status')}</th>
+                      <th className="text-left p-3 font-medium">{t('Created')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {records.map((r) => (
+                      <tr key={r.id} className="border-b last:border-0 hover:bg-muted/50">
+                        <td className="p-3">{r.id}</td>
+                        <td className="p-3">{r.username || r.user_id}</td>
+                        <td className="p-3">{r.from_user_id}</td>
+                        <td className="p-3">{formatMoney(r.amount)}</td>
+                        <td className="p-3">{(r.rate * 100).toFixed(1)}%</td>
+                        <td className="p-3">
+                          <span
+                            className={`inline-block rounded-full px-2 py-0.5 text-xs ${
+                              r.status === 'paid' || r.status === 'settled'
+                                ? 'bg-green-100 text-green-700'
+                                : r.status === 'pending'
+                                  ? 'bg-yellow-100 text-yellow-700'
+                                  : r.status === 'cancelled'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            {r.status === 'paid' || r.status === 'settled'
+                              ? t('Paid')
+                              : r.status === 'pending'
+                                ? t('Pending')
+                                : r.status === 'cancelled'
+                                  ? t('Cancelled')
+                                  : r.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-muted-foreground">{formatDateTime(r.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {renderPagination(recordsPage, recordsTotal, (page) => fetchRecords(page, recordsFilter))}
+              </div>
+            )}
           </div>
         )}
 

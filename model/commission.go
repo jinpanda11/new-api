@@ -324,7 +324,7 @@ func ProcessCommissionForTopUp(topUpUserId int, topUpId int, money float64) erro
 		Amount:     commissionAmount,
 		Money:      money,
 		Rate:       rate,
-		Status:     CommissionStatusPending,
+		Status:     CommissionStatusSettled,
 	}
 
 	return CreateCommissionRecord(record)
@@ -405,20 +405,28 @@ func GetAllWithdrawals(page, pageSize int, status string) ([]WithdrawalRequest, 
 
 func ApproveWithdrawal(id int, adminId int) error {
 	now := time.Now().Unix()
-	result := DB.Model(&WithdrawalRequest{}).
-		Where("id = ? AND status = ?", id, WithdrawalStatusPending).
-		Updates(map[string]interface{}{
+	return DB.Transaction(func(tx *gorm.DB) error {
+		var req WithdrawalRequest
+		if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&req, id).Error; err != nil {
+			return errors.New("提现申请不存在")
+		}
+		if req.Status != WithdrawalStatusPending {
+			return errors.New("提现申请已处理")
+		}
+
+		if err := tx.Model(&req).Updates(map[string]interface{}{
 			"status":      WithdrawalStatusApproved,
 			"reviewed_by": adminId,
 			"reviewed_at": now,
-		})
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return errors.New("提现申请不存在或已处理")
-	}
-	return nil
+		}).Error; err != nil {
+			return err
+		}
+
+		// Update wallet total_withdrawn
+		return tx.Model(&CommissionWallet{}).
+			Where("user_id = ?", req.UserId).
+			Update("total_withdrawn", gorm.Expr("total_withdrawn + ?", req.Amount)).Error
+	})
 }
 
 func RejectWithdrawal(id int, adminId int, note string) error {
@@ -508,7 +516,7 @@ func AdjustCommission(userId int, amount float64, remark string) error {
 
 	return DB.Transaction(func(tx *gorm.DB) error {
 		var wallet CommissionWallet
-		err := tx.Where("user_id = ?", userId).First(&wallet).Error
+		err := tx.Set("gorm:query_option", "FOR UPDATE").Where("user_id = ?", userId).First(&wallet).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				wallet = CommissionWallet{UserId: userId}
@@ -545,14 +553,16 @@ func AdjustCommission(userId int, amount float64, remark string) error {
 // ============================================================================
 
 type PromoterItem struct {
-	UserId        int     `json:"user_id"`
-	Username      string  `json:"username"`
-	Email         string  `json:"email"`
-	WalletBalance float64 `json:"wallet_balance"`
-	TotalEarned   float64 `json:"total_earned"`
-	ActiveCount   int     `json:"active_count"`
-	AffCount      int     `json:"aff_count"`
-	CreatedAt     int64   `json:"created_at"`
+	Id             int     `json:"id"`
+	Username       string  `json:"username"`
+	Email          string  `json:"email"`
+	WalletBalance  float64 `json:"wallet_balance"`
+	TotalEarned    float64 `json:"total_earned"`
+	TotalWithdrawn float64 `json:"total_withdrawn"`
+	ActiveAffCount int     `json:"active_aff_count"`
+	AffCount       int     `json:"aff_count"`
+	CommissionRate float64 `json:"commission_rate"`
+	CreatedAt      int64   `json:"created_at"`
 }
 
 func GetPromoterList(page, pageSize int, keyword string) ([]PromoterItem, int64, error) {
@@ -560,10 +570,11 @@ func GetPromoterList(page, pageSize int, keyword string) ([]PromoterItem, int64,
 	var total int64
 
 	query := DB.Table("commission_wallets").
-		Select(`commission_wallets.user_id, users.username, users.email,
+		Select(`commission_wallets.user_id as id, users.username, users.email,
 				commission_wallets.balance as wallet_balance,
 				commission_wallets.total_earned,
-				COALESCE(active_counts.cnt, 0) as active_count,
+				commission_wallets.total_withdrawn,
+				COALESCE(active_counts.cnt, 0) as active_aff_count,
 				users.aff_count,
 				users.created_at`).
 		Joins("LEFT JOIN users ON users.id = commission_wallets.user_id").
@@ -586,6 +597,25 @@ func GetPromoterList(page, pageSize int, keyword string) ([]PromoterItem, int64,
 		Offset((page - 1) * pageSize).Limit(pageSize).Scan(&items).Error; err != nil {
 		return nil, 0, err
 	}
+
+	// Calculate commission rate for each promoter based on their active affiliate count
+	config := GetDefaultCommissionConfig()
+	if v, ok := common.OptionMap[CommissionConfigKey]; ok && v != "" {
+		parsed := &CommissionConfig{}
+		if err := common.UnmarshalJsonStr(v, parsed); err == nil {
+			config = parsed
+		}
+	}
+	for i := range items {
+		rate := config.DefaultRate
+		for _, tier := range config.Tiers {
+			if items[i].ActiveAffCount >= tier.MinUsers {
+				rate = tier.Rate
+			}
+		}
+		items[i].CommissionRate = rate
+	}
+
 	return items, total, nil
 }
 
@@ -594,11 +624,12 @@ func GetPromoterList(page, pageSize int, keyword string) ([]PromoterItem, int64,
 // ============================================================================
 
 type CommissionDashboardStats struct {
-	TotalCommission float64           `json:"total_commission"`
-	ActivePromoters int64             `json:"active_promoters"`
-	TotalPromoters  int64             `json:"total_promoters"`
-	TierDistribution []TierDistItem   `json:"tier_distribution"`
-	TopPromoters    []TopPromoterItem `json:"top_promoters"`
+	TotalCommission         float64  `json:"total_commission"`
+	TotalCommissionPaid     float64  `json:"total_commission_paid"`
+	ActivePromoters         int64    `json:"active_promoters"`
+	TotalPromoters          int64    `json:"total_promoters"`
+	PendingWithdrawals      int64    `json:"pending_withdrawals"`
+	PendingWithdrawalAmount float64  `json:"pending_withdrawal_amount"`
 }
 
 type TierDistItem struct {
@@ -617,14 +648,23 @@ type TopPromoterItem struct {
 func GetCommissionDashboardStats() (*CommissionDashboardStats, error) {
 	stats := &CommissionDashboardStats{}
 
-	// Total commission paid out
+	// Total commission earned (sum of all earned commissions)
 	DB.Model(&CommissionWallet{}).Select("COALESCE(SUM(total_earned), 0)").Scan(&stats.TotalCommission)
 
-	// Count wallets with balance > 0 or total_earned > 0 as active
+	// Total commission paid out (sum of all withdrawn amounts)
+	DB.Model(&CommissionWallet{}).Select("COALESCE(SUM(total_withdrawn), 0)").Scan(&stats.TotalCommissionPaid)
+
+	// Count wallets with total_earned > 0 as active
 	DB.Model(&CommissionWallet{}).Where("total_earned > 0").Count(&stats.ActivePromoters)
 
-	// Count wallets with balance > 0 or total_earned > 0 as total
+	// Count wallets with total_earned > 0 OR balance > 0 as total
 	DB.Model(&CommissionWallet{}).Where("total_earned > 0 OR balance > 0").Count(&stats.TotalPromoters)
+
+	// Pending withdrawal requests count
+	DB.Model(&WithdrawalRequest{}).Where("status = ?", WithdrawalStatusPending).Count(&stats.PendingWithdrawals)
+
+	// Pending withdrawal requests total amount
+	DB.Model(&WithdrawalRequest{}).Select("COALESCE(SUM(amount), 0)").Where("status = ?", WithdrawalStatusPending).Scan(&stats.PendingWithdrawalAmount)
 
 	return stats, nil
 }

@@ -340,6 +340,10 @@ func inviteUser(inviterId int) (err error) {
 	return DB.Save(user).Error
 }
 
+func incrementInviteCount(inviterId int) {
+	DB.Model(&User{}).Where("id = ?", inviterId).UpdateColumn("aff_count", gorm.Expr("aff_count + 1"))
+}
+
 func (user *User) TransferAffQuotaToQuota(quota int) error {
 	// 检查quota是否小于最小额度
 	if float64(quota) < common.QuotaPerUnit {
@@ -428,7 +432,9 @@ func (user *User) Insert(inviterId int) error {
 			//_ = IncreaseUserQuota(inviterId, common.QuotaForInviter)
 			RecordLog(inviterId, LogTypeSystem, fmt.Sprintf("邀请用户赠送 %s", logger.LogQuota(common.QuotaForInviter)))
 			_ = inviteUser(inviterId)
+
 		}
+		incrementInviteCount(inviterId)
 	}
 	return nil
 }
@@ -488,7 +494,9 @@ func (user *User) FinalizeOAuthUserCreation(inviterId int) {
 		if common.QuotaForInviter > 0 {
 			RecordLog(inviterId, LogTypeSystem, fmt.Sprintf("邀请用户赠送 %s", logger.LogQuota(common.QuotaForInviter)))
 			_ = inviteUser(inviterId)
+
 		}
+		incrementInviteCount(inviterId)
 	}
 }
 

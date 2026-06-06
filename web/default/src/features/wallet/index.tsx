@@ -45,12 +45,14 @@ import {
   getMinTopupAmount,
   isWaffoPancakePayment,
 } from './lib'
+import { getCommissionWallet, transferCommissionToBalance } from '@/features/commission/api'
 import type {
   UserWalletData,
   PaymentMethod,
   PresetAmount,
   CreemProduct,
 } from './types'
+import type { CommissionWallet } from '@/features/commission/types'
 
 interface WalletProps {
   initialShowHistory?: boolean
@@ -73,6 +75,8 @@ export function Wallet(props: WalletProps) {
   const [selectedCreemProduct, setSelectedCreemProduct] =
     useState<CreemProduct | null>(null)
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(true)
+  const [commissionWallet, setCommissionWallet] = useState<CommissionWallet | null>(null)
+  const [commissionWalletLoading, setCommissionWalletLoading] = useState(false)
 
   const { status } = useStatus()
   const { currency } = useSystemConfig()
@@ -119,9 +123,25 @@ export function Wallet(props: WalletProps) {
     }
   }, [])
 
+  // Fetch commission wallet
+  const fetchCommissionWallet = useCallback(async () => {
+    try {
+      setCommissionWalletLoading(true)
+      const res = await getCommissionWallet()
+      if (res.success && res.data) {
+        setCommissionWallet(res.data as CommissionWallet)
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setCommissionWalletLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     fetchUser()
-  }, [fetchUser])
+    fetchCommissionWallet()
+  }, [fetchUser, fetchCommissionWallet])
 
   useEffect(() => {
     if (props.initialShowHistory) {
@@ -207,7 +227,17 @@ export function Wallet(props: WalletProps) {
     }
   }
 
-  // Handle transfer
+  // Handle commission transfer to balance
+  const handleCommissionTransfer = useCallback(async () => {
+    if (!commissionWallet || commissionWallet.balance <= 0) return
+    const res = await transferCommissionToBalance(commissionWallet.balance)
+    if (res.success) {
+      await fetchUser()
+      await fetchCommissionWallet()
+    }
+  }, [commissionWallet, fetchUser, fetchCommissionWallet])
+
+  // Handle old affiliate quota transfer
   const handleTransfer = async (amount: number) => {
     const success = await transferQuota(amount)
     if (success) {
@@ -317,11 +347,14 @@ export function Wallet(props: WalletProps) {
             <AffiliateRewardsCard
               user={user}
               affiliateLink={affiliateLink}
+              commissionBalance={commissionWallet?.balance ?? 0}
+              commissionTotalEarned={commissionWallet?.total_earned ?? 0}
+              onCommissionTransfer={handleCommissionTransfer}
               onTransfer={() => setTransferDialogOpen(true)}
               complianceConfirmed={
                 topupInfo?.payment_compliance_confirmed !== false
               }
-              loading={affiliateLoading}
+              loading={affiliateLoading || commissionWalletLoading}
             />
           </div>
         </SectionPageLayout.Content>

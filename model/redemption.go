@@ -126,6 +126,7 @@ func Redeem(key string, userId int) (quota int, err error) {
 		keyCol = `"key"`
 	}
 	common.RandomSleep()
+	var topupId int
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		err := tx.Set("gorm:query_option", "FOR UPDATE").Where(keyCol+" = ?", key).First(redemption).Error
 		if err != nil {
@@ -153,13 +154,39 @@ func Redeem(key string, userId int) (quota int, err error) {
 		redemption.Status = common.RedemptionCodeStatusUsed
 		redemption.UsedUserId = userId
 		err = tx.Save(redemption).Error
-		return err
+		if err != nil {
+			return err
+		}
+
+		// Create top_up record for redemption code
+		now := common.GetTimestamp()
+		topup := TopUp{
+			UserId:          userId,
+			Amount:          int64(redemption.Quota),
+			Money:           float64(redemption.Quota) / common.QuotaPerUnit,
+			TradeNo:         key,
+			PaymentMethod:   "redemption",
+			PaymentProvider: "redemption",
+			CreateTime:      now,
+			CompleteTime:    now,
+			Status:          common.TopUpStatusSuccess,
+		}
+		if err := tx.Create(&topup).Error; err != nil {
+			return err
+		}
+		topupId = topup.Id
+		return nil
 	})
 	if err != nil {
 		common.SysError("redemption failed: " + err.Error())
 		return 0, ErrRedeemFailed
 	}
 	RecordLog(userId, LogTypeTopup, fmt.Sprintf("通过兑换码充值 %s，兑换码ID %d", logger.LogQuota(redemption.Quota), redemption.Id))
+
+	// 兑换码返佣：使用统一返佣逻辑
+	money := float64(redemption.Quota) / common.QuotaPerUnit
+	go ProcessCommissionForTopUp(userId, topupId, money)
+
 	return redemption.Quota, nil
 }
 
