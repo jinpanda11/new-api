@@ -137,6 +137,7 @@ func GetTopUpInfo(c *gin.Context) {
 		"discount":                operation_setting.GetPaymentSetting().AmountDiscount,
 		"topup_link":              common.TopUpLink,
 		"payment_tip":            common.OptionMap["PaymentTip"],
+		"epay_gateway2_bonus":    operation_setting.EpayGateway2.Bonus,
 	}
 	common.ApiSuccess(c, data)
 }

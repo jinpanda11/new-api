@@ -312,6 +312,9 @@ export function RechargeFormCard({
                     {topupInfo?.pay_methods?.map((method) => {
                       const minTopup = method.min_topup || 0
                       const disabled = minTopup > topupAmount
+                      const isG2 = method.type.startsWith('g2:')
+                      const bonusRate = topupInfo?.epay_gateway2_bonus
+                      const showBonus = isG2 && bonusRate && bonusRate > 0
 
                       const button = (
                         <Button
@@ -332,6 +335,11 @@ export function RechargeFormCard({
                             )
                           )}
                           <span className='truncate'>{method.name}</span>
+                          {showBonus && (
+                            <span className='ml-auto text-xs font-semibold text-green-600'>
+                              +{bonusRate}%
+                            </span>
+                          )}
                         </Button>
                       )
 

@@ -339,6 +339,7 @@ export function Wallet(props: WalletProps) {
         discountRate={getDiscountRate()}
         usdExchangeRate={effectiveUsdExchangeRate}
         tip={topupInfo?.payment_tip}
+        bonusRate={topupInfo?.epay_gateway2_bonus}
       />
 
       <TransferDialog

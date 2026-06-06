@@ -46,6 +46,7 @@ interface PaymentConfirmDialogProps {
   discountRate?: number
   usdExchangeRate?: number
   tip?: string
+  bonusRate?: number
 }
 
 export function PaymentConfirmDialog({
@@ -60,11 +61,15 @@ export function PaymentConfirmDialog({
   discountRate = DEFAULT_DISCOUNT_RATE,
   usdExchangeRate = 1,
   tip,
+  bonusRate,
 }: PaymentConfirmDialogProps) {
   const { t } = useTranslation()
   const hasDiscount = discountRate > 0 && discountRate < 1 && paymentAmount > 0
   const originalAmount = hasDiscount ? paymentAmount / discountRate : 0
   const discountAmount = hasDiscount ? originalAmount - paymentAmount : 0
+  const isG2 = paymentMethod?.type.startsWith('g2:')
+  const hasBonus = isG2 && bonusRate && bonusRate > 0
+  const bonusAmount = hasBonus && !calculating ? (topupAmount * usdExchangeRate) * bonusRate / 100 : 0
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -118,6 +123,23 @@ export function PaymentConfirmDialog({
                 <span className='text-muted-foreground'>{t('You save')}</span>
                 <span className='font-semibold text-green-600'>
                   {formatCurrency(discountAmount)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {hasBonus && !calculating && (
+            <div className='bg-green-50 border border-green-200 rounded-lg p-3 dark:bg-green-950 dark:border-green-800'>
+              <div className='flex items-center justify-between text-sm'>
+                <span className='text-muted-foreground'>
+                  {t('Bonus')} (+{bonusRate}%)
+                </span>
+                <span className='font-semibold text-green-600'>
+                  +{formatLocalCurrencyAmount(bonusAmount, {
+                    digitsLarge: 2,
+                    digitsSmall: 2,
+                    abbreviate: false,
+                  })}
                 </span>
               </div>
             </div>

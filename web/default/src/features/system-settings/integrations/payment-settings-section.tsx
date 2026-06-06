@@ -1198,6 +1198,29 @@ export function PaymentSettingsSection({
                           </FormControl>
                           <FormMessage />
                         </FormItem>
+                        <FormItem>
+                          <FormLabel>{t('Bonus (%)')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              min={0}
+                              step='0.1'
+                              placeholder='10'
+                              value={parsed.bonus ?? ''}
+                              onChange={(e) => {
+                                try {
+                                  const v = JSON.parse(field.value || '{}')
+                                  v.bonus = e.target.value === '' ? 0 : parseFloat(e.target.value)
+                                  field.onChange(JSON.stringify(v, null, 2))
+                                } catch {}
+                              }}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {t('Extra quota bonus percentage when using this gateway (e.g. 10 = 10% extra)')}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
                       </>
                     )
                   }}

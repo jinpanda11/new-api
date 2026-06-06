@@ -158,6 +158,8 @@ export interface TopupInfo {
   payment_compliance_terms_version?: string
   /** Custom tip shown in the payment confirmation dialog */
   payment_tip?: string
+  /** Bonus percentage for Epay Gateway 2 (e.g. 10 = 10% extra) */
+  epay_gateway2_bonus?: number
 }
 
 /**
