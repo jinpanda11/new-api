@@ -99,5 +99,11 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({ title: t('About'), href: '/about' })
   }
 
+  // Custom Page (admin-configurable name and content)
+  if (modules?.custom_page !== false) {
+    const customTitle = (status?.CustomPageTitle as string) || t('Custom Page')
+    links.push({ title: customTitle, href: '/custom' })
+  }
+
   return links
 }

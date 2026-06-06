@@ -55,6 +55,7 @@ const headerNavSchema = z.object({
   rankingsRequireAuth: z.boolean(),
   docs: z.boolean(),
   about: z.boolean(),
+  custom_page: z.boolean(),
 })
 
 type HeaderNavFormValues = z.infer<typeof headerNavSchema>
@@ -93,6 +94,10 @@ const toFormValues = (config: HeaderNavModulesConfig): HeaderNavFormValues => ({
     config.about === undefined
       ? HEADER_NAV_DEFAULT.about
       : Boolean(config.about),
+  custom_page:
+    config.custom_page === undefined
+      ? HEADER_NAV_DEFAULT.custom_page
+      : Boolean(config.custom_page),
 })
 
 export function HeaderNavigationSection({
@@ -119,6 +124,7 @@ export function HeaderNavigationSection({
       console: values.console,
       docs: values.docs,
       about: values.about,
+      custom_page: values.custom_page,
       pricing: {
         ...(config.pricing ?? HEADER_NAV_DEFAULT.pricing),
         enabled: values.pricingEnabled,
@@ -170,6 +176,11 @@ export function HeaderNavigationSection({
       key: 'about',
       title: t('About'),
       description: t('Static page describing the platform.'),
+    },
+    {
+      key: 'custom_page',
+      title: t('Custom Page'),
+      description: t('Customizable page with admin-defined title and content.'),
     },
   ]
 

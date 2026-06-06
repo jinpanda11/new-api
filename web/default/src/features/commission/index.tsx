@@ -372,6 +372,9 @@ export function Commission() {
                       })}
                     </p>
                   )}
+                  <p className="mt-3 text-xs text-muted-foreground border-t pt-3">
+                    {t('commission.effective_definition')}
+                  </p>
                 </div>
               </>
             ) : null}

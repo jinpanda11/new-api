@@ -69,6 +69,8 @@ export type SiteSettings = {
   'legal.privacy_policy': string
   HeaderNavModules: string
   SidebarModulesAdmin: string
+  CustomPageTitle: string
+  CustomPageContent: string
 }
 
 export type AuthSettings = {
