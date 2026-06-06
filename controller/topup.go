@@ -40,9 +40,6 @@ func GetTopUpInfo(c *gin.Context) {
 				m2[k] = v
 			}
 			m2["type"] = "g2:" + m["type"]
-			if _, ok := m2["name"]; ok && gw2.Name != "" {
-				m2["name"] = m["name"] + " (" + gw2.Name + ")"
-			}
 			payMethods = append(payMethods, m2)
 		}
 	}
