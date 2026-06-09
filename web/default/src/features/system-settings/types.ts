@@ -222,6 +222,7 @@ export type BillingSettings = {
   PayAddress: string
   EpayId: string
   EpayKey: string
+  EpayFee: string
   Price: number
   MinTopUp: number
   CustomCallbackAddress: string

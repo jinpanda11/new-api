@@ -81,6 +81,7 @@ const paymentSchema = z.object({
   }, 'Provide a valid callback URL starting with http:// or https://'),
   EpayId: z.string(),
   EpayKey: z.string(),
+  EpayFee: z.coerce.number().min(0),
   EpayGateway2: z.string().superRefine((value, ctx) => {
     const error = getJsonError(value)
     if (error) {
@@ -325,6 +326,7 @@ export function PaymentSettingsSection({
       PayAddress: removeTrailingSlash(values.PayAddress),
       EpayId: values.EpayId.trim(),
       EpayKey: values.EpayKey.trim(),
+      EpayFee: values.EpayFee,
       Price: values.Price,
       MinTopUp: values.MinTopUp,
       CustomCallbackAddress: removeTrailingSlash(values.CustomCallbackAddress),
@@ -369,6 +371,7 @@ export function PaymentSettingsSection({
       PayAddress: removeTrailingSlash(initialRef.current.PayAddress),
       EpayId: initialRef.current.EpayId.trim(),
       EpayKey: initialRef.current.EpayKey.trim(),
+      EpayFee: initialRef.current.EpayFee,
       Price: initialRef.current.Price,
       MinTopUp: initialRef.current.MinTopUp,
       CustomCallbackAddress: removeTrailingSlash(
@@ -426,6 +429,10 @@ export function PaymentSettingsSection({
 
     if (sanitized.EpayKey && sanitized.EpayKey !== initial.EpayKey) {
       updates.push({ key: 'EpayKey', value: sanitized.EpayKey })
+    }
+
+    if (sanitized.EpayFee !== initial.EpayFee) {
+      updates.push({ key: 'EpayFee', value: String(sanitized.EpayFee) })
     }
 
     if (sanitized.Price !== initial.Price) {
@@ -1082,6 +1089,30 @@ export function PaymentSettingsSection({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name='EpayFee'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Handling fee (%)')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min='0'
+                      step='0.1'
+                      placeholder='0'
+                      {...field}
+                      onChange={(event) => field.onChange(event.target.value === '' ? 0 : Number(event.target.value))}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('Fee percentage added to payment amount for Epay1 (e.g. 5 = user pays 5% extra)')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
 
           <Separator />

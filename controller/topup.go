@@ -135,6 +135,7 @@ func GetTopUpInfo(c *gin.Context) {
 		"topup_link":              common.TopUpLink,
 		"payment_tip":            common.OptionMap["PaymentTip"],
 		"epay_gateway2_bonus":    operation_setting.EpayGateway2.Bonus,
+		"epay_fee":               operation_setting.EpayFee,
 	}
 	common.ApiSuccess(c, data)
 }
@@ -293,11 +294,19 @@ func RequestEpay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前管理员未配置支付信息"})
 		return
 	}
+
+	// epay1 手续费：在基础金额上增加手续费百分比
+	totalPay := payMoney
+	if !isGateway2 && operation_setting.EpayFee > 0 {
+		fee := payMoney * operation_setting.EpayFee / 100.0
+		totalPay = payMoney + fee
+	}
+
 	uri, params, err := client.Purchase(&epay.PurchaseArgs{
 		Type:           actualPaymentMethod,
 		ServiceTradeNo: tradeNo,
 		Name:           fmt.Sprintf("TUC%d", req.Amount),
-		Money:          strconv.FormatFloat(payMoney, 'f', 2, 64),
+		Money:          strconv.FormatFloat(totalPay, 'f', 2, 64),
 		Device:         epay.PC,
 		NotifyUrl:      notifyUrl,
 		ReturnUrl:      returnUrl,

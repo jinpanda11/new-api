@@ -78,6 +78,7 @@ func InitOptionMap() {
 	common.OptionMap["CustomCallbackAddress"] = ""
 	common.OptionMap["EpayId"] = ""
 	common.OptionMap["EpayKey"] = ""
+	common.OptionMap["EpayFee"] = "0"
 	common.OptionMap["EpayGateway2"] = "{}"
 	common.OptionMap["PaymentTip"] = ""
 	common.OptionMap["Price"] = strconv.FormatFloat(operation_setting.Price, 'f', -1, 64)
@@ -394,6 +395,8 @@ func updateOptionMap(key string, value string) (err error) {
 		operation_setting.EpayId = value
 	case "EpayKey":
 		operation_setting.EpayKey = value
+	case "EpayFee":
+		operation_setting.EpayFee, _ = strconv.ParseFloat(value, 64)
 	case "EpayGateway2":
 		err = operation_setting.UpdateEpayGateway2ByJsonString(value)
 	case "Price":
