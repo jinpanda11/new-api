@@ -200,9 +200,9 @@ func GetEpay2Client() *epay.Client {
 	return withUrl
 }
 
-func getPayMoney(amount int64, group string) float64 {
+func getPayMoney(amount int64, group string, price float64) float64 {
 	dAmount := decimal.NewFromInt(amount)
-	// 充值金额以“展示类型”为准：
+	// 充值金额以”展示类型”为准：
 	// - USD/CNY: 前端传 amount 为金额单位；TOKENS: 前端传 tokens，需要换成 USD 金额
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
@@ -215,7 +215,7 @@ func getPayMoney(amount int64, group string) float64 {
 	}
 
 	dTopupGroupRatio := decimal.NewFromFloat(topupGroupRatio)
-	dPrice := decimal.NewFromFloat(operation_setting.Price)
+	dPrice := decimal.NewFromFloat(price)
 	// apply optional preset discount by the original request amount (if configured), default 1.0
 	discount := 1.0
 	if ds, ok := operation_setting.GetPaymentSetting().AmountDiscount[int(amount)]; ok {
@@ -228,6 +228,14 @@ func getPayMoney(amount int64, group string) float64 {
 	payMoney := dAmount.Mul(dPrice).Mul(dTopupGroupRatio).Mul(dDiscount)
 
 	return payMoney.InexactFloat64()
+}
+
+// getGatewayPrice 根据网关获取有效的 Price
+func getGatewayPrice(isGateway2 bool) float64 {
+	if isGateway2 && operation_setting.EpayGateway2.Price > 0 {
+		return operation_setting.EpayGateway2.Price
+	}
+	return operation_setting.Price
 }
 
 func getMinTopup() int64 {
@@ -258,7 +266,7 @@ func RequestEpay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
 		return
 	}
-	payMoney := getPayMoney(req.Amount, group)
+	payMoney := getPayMoney(req.Amount, group, operation_setting.Price)
 	if payMoney < 0.01 {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
@@ -281,6 +289,10 @@ func RequestEpay(c *gin.Context) {
 	var client *epay.Client
 	var tradeNo string
 	var actualPaymentMethod string
+
+	// 根据网关获取有效的价格，epay2 可使用独立 Price
+	gatewayPrice := getGatewayPrice(isGateway2)
+	payMoney = getPayMoney(req.Amount, group, gatewayPrice)
 	if isGateway2 {
 		client = GetEpay2Client()
 		actualPaymentMethod = strings.TrimPrefix(req.PaymentMethod, "g2:")
@@ -531,7 +543,7 @@ func RequestAmount(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
 		return
 	}
-	payMoney := getPayMoney(req.Amount, group)
+	payMoney := getPayMoney(req.Amount, group, operation_setting.Price)
 	if payMoney <= 0.01 {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return

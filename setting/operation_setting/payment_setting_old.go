@@ -27,6 +27,7 @@ type EpayGateway2Config struct {
 	Name       string              `json:"name"`
 	PayMethods []map[string]string `json:"pay_methods"`
 	Bonus      float64             `json:"bonus"` // 充值加赠比例（百分比），例如 10 表示加赠 10%
+	Price      float64             `json:"price"` // 独立价格/汇率，0 表示使用全局 Price
 }
 
 var EpayGateway2 = EpayGateway2Config{}

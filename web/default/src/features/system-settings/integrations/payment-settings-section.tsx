@@ -1252,6 +1252,29 @@ export function PaymentSettingsSection({
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
+                        <FormItem>
+                          <FormLabel>{t('Price (optional)')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              min={0}
+                              step='0.01'
+                              placeholder='0'
+                              value={parsed.price ?? ''}
+                              onChange={(e) => {
+                                try {
+                                  const v = JSON.parse(field.value || '{}')
+                                  v.price = e.target.value === '' ? 0 : parseFloat(e.target.value)
+                                  field.onChange(JSON.stringify(v, null, 2))
+                                } catch {}
+                              }}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {t('Independent exchange rate for this gateway. Leave 0 to use global Price.')}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
                       </>
                     )
                   }}
