@@ -127,6 +127,7 @@ func GetTopUpInfo(c *gin.Context) {
 		"creem_products":          setting.CreemProducts,
 		"pay_methods":             payMethods,
 		"min_topup":               operation_setting.MinTopUp,
+		"max_topup":               operation_setting.MaxTopUp,
 		"stripe_min_topup":        setting.StripeMinTopUp,
 		"waffo_min_topup":         setting.WaffoMinTopUp,
 		"waffo_pancake_min_topup": setting.WaffoPancakeMinTopUp,
@@ -248,6 +249,19 @@ func getMinTopup() int64 {
 	return int64(minTopup)
 }
 
+func getMaxTopup() int64 {
+	maxTopup := operation_setting.MaxTopUp
+	if maxTopup <= 0 {
+		return 0 // 0 means no limit
+	}
+	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
+		dMaxTopup := decimal.NewFromInt(int64(maxTopup))
+		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+		maxTopup = int(dMaxTopup.Mul(dQuotaPerUnit).IntPart())
+	}
+	return int64(maxTopup)
+}
+
 func RequestEpay(c *gin.Context) {
 	var req EpayRequest
 	err := c.ShouldBindJSON(&req)
@@ -305,6 +319,15 @@ func RequestEpay(c *gin.Context) {
 	if client == nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前管理员未配置支付信息"})
 		return
+	}
+
+	// 最高充值金额校验（仅网关1）
+	if !isGateway2 {
+		maxTopup := getMaxTopup()
+		if maxTopup > 0 && req.Amount > maxTopup {
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能大于 %d", maxTopup)})
+			return
+		}
 	}
 
 	// epay1 手续费：在基础金额上增加手续费百分比
@@ -450,16 +473,10 @@ func EpayNotify(c *gin.Context) {
 		return
 	}
 	verifyInfo, err := client.Verify(params)
-	if err == nil && verifyInfo.VerifyStatus {
-		logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 webhook 验签成功 trade_no=%s callback_type=%s trade_status=%s client_ip=%s verify_info=%q", verifyInfo.ServiceTradeNo, verifyInfo.Type, verifyInfo.TradeStatus, c.ClientIP(), common.GetJsonString(verifyInfo)))
-		_, err := c.Writer.Write([]byte("success"))
-		if err != nil {
-			logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 webhook 响应写入失败 trade_no=%s client_ip=%s error=%q", verifyInfo.ServiceTradeNo, c.ClientIP(), err.Error()))
-		}
-	} else {
-		_, err := c.Writer.Write([]byte("fail"))
-		if err != nil {
-			logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 webhook 响应写入失败 path=%q client_ip=%s error=%q", c.Request.RequestURI, c.ClientIP(), err.Error()))
+	if err != nil || !verifyInfo.VerifyStatus {
+		_, writeErr := c.Writer.Write([]byte("fail"))
+		if writeErr != nil {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 webhook 响应写入失败 path=%q client_ip=%s error=%q", c.Request.RequestURI, c.ClientIP(), writeErr.Error()))
 		}
 		if err != nil {
 			logger.LogWarn(c.Request.Context(), fmt.Sprintf("易支付 webhook 验签失败 path=%q client_ip=%s verify_error=%q", c.Request.RequestURI, c.ClientIP(), err.Error()))
@@ -469,59 +486,46 @@ func EpayNotify(c *gin.Context) {
 		return
 	}
 
+	logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 webhook 验签成功 trade_no=%s callback_type=%s trade_status=%s client_ip=%s verify_info=%q", verifyInfo.ServiceTradeNo, verifyInfo.Type, verifyInfo.TradeStatus, c.ClientIP(), common.GetJsonString(verifyInfo)))
+
 	if verifyInfo.TradeStatus == epay.StatusTradeSuccess {
 		LockOrder(verifyInfo.ServiceTradeNo)
 		defer UnlockOrder(verifyInfo.ServiceTradeNo)
+
 		topUp := model.GetTopUpByTradeNo(verifyInfo.ServiceTradeNo)
 		if topUp == nil {
 			logger.LogWarn(c.Request.Context(), fmt.Sprintf("易支付 回调订单不存在 trade_no=%s callback_type=%s client_ip=%s verify_info=%q", verifyInfo.ServiceTradeNo, verifyInfo.Type, c.ClientIP(), common.GetJsonString(verifyInfo)))
+			_, _ = c.Writer.Write([]byte("success"))
 			return
 		}
 		if topUp.PaymentProvider != model.PaymentProviderEpay {
 			logger.LogWarn(c.Request.Context(), fmt.Sprintf("易支付 订单支付网关不匹配 trade_no=%s order_provider=%s callback_type=%s client_ip=%s", verifyInfo.ServiceTradeNo, topUp.PaymentProvider, verifyInfo.Type, c.ClientIP()))
+			_, _ = c.Writer.Write([]byte("success"))
 			return
 		}
-		if topUp.Status == common.TopUpStatusPending {
-			if topUp.PaymentMethod != verifyInfo.Type {
-				logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 实际支付方式与订单不同 trade_no=%s order_payment_method=%s actual_type=%s client_ip=%s", verifyInfo.ServiceTradeNo, topUp.PaymentMethod, verifyInfo.Type, c.ClientIP()))
-				topUp.PaymentMethod = verifyInfo.Type
-			}
-			topUp.Status = common.TopUpStatusSuccess
-			err := topUp.Update()
-			if err != nil {
-				logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 更新充值订单失败 trade_no=%s user_id=%d client_ip=%s error=%q topup=%q", topUp.TradeNo, topUp.UserId, c.ClientIP(), err.Error(), common.GetJsonString(topUp)))
-				return
-			}
-			//user, _ := model.GetUserById(topUp.UserId, false)
-			//user.Quota += topUp.Amount * 500000
-			dAmount := decimal.NewFromInt(int64(topUp.Amount))
-			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-			quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
-			bonusQuota := 0
-			if useGateway2 && operation_setting.EpayGateway2.Bonus > 0 {
-				bonusQuota = int(float64(quotaToAdd) * operation_setting.EpayGateway2.Bonus / 100.0)
-			}
-			totalQuota := quotaToAdd + bonusQuota
-			err = model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true)
-			if err != nil {
-				logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 更新用户额度失败 trade_no=%s user_id=%d client_ip=%s quota_to_add=%d error=%q topup=%q", topUp.TradeNo, topUp.UserId, c.ClientIP(), quotaToAdd, err.Error(), common.GetJsonString(topUp)))
-				return
-			}
-			if bonusQuota > 0 {
-				if err := model.IncreaseUserQuota(topUp.UserId, bonusQuota, true); err != nil {
-					logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 更新用户赠金额度失败 trade_no=%s user_id=%d client_ip=%s bonus=%d error=%q topup=%q", topUp.TradeNo, topUp.UserId, c.ClientIP(), bonusQuota, err.Error(), common.GetJsonString(topUp)))
-					return
-				}
-			}
-			logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 充值成功 trade_no=%s user_id=%d client_ip=%s quota_to_add=%d bonus=%d total=%d money=%.2f topup=%q", topUp.TradeNo, topUp.UserId, c.ClientIP(), quotaToAdd, bonusQuota, totalQuota, topUp.Money, common.GetJsonString(topUp)))
-			model.RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money), c.ClientIP(), topUp.PaymentMethod, "epay")
-			if bonusQuota > 0 {
-				model.RecordTopupLog(topUp.UserId, fmt.Sprintf("充值赠送额度: %v (赠送比例: %d%%)", logger.LogQuota(bonusQuota), int(operation_setting.EpayGateway2.Bonus)), c.ClientIP(), topUp.PaymentMethod, "epay")
-			}
-			go model.ProcessCommissionForTopUp(topUp.UserId, topUp.Id, topUp.Money)
+
+		bonusPercent := 0.0
+		if useGateway2 {
+			bonusPercent = operation_setting.EpayGateway2.Bonus
 		}
+		quotaToAdd, bonusQuota, err := model.RechargeEpay(verifyInfo.ServiceTradeNo, verifyInfo.Type, bonusPercent)
+		if err != nil {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 充值处理失败 trade_no=%s user_id=%d client_ip=%s error=%q", verifyInfo.ServiceTradeNo, topUp.UserId, c.ClientIP(), err.Error()))
+			_, _ = c.Writer.Write([]byte("fail"))
+			return
+		}
+
+		logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 充值成功 trade_no=%s user_id=%d client_ip=%s quota_to_add=%d bonus=%d total=%d money=%.2f topup=%q", verifyInfo.ServiceTradeNo, topUp.UserId, c.ClientIP(), quotaToAdd, bonusQuota, quotaToAdd+bonusQuota, topUp.Money, common.GetJsonString(topUp)))
+		model.RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money), c.ClientIP(), topUp.PaymentMethod, "epay")
+		if bonusQuota > 0 {
+			model.RecordTopupLog(topUp.UserId, fmt.Sprintf("充值赠送额度: %v (赠送比例: %d%%)", logger.LogQuota(bonusQuota), int(bonusPercent)), c.ClientIP(), topUp.PaymentMethod, "epay")
+		}
+		go model.ProcessCommissionForTopUp(topUp.UserId, topUp.Id, topUp.Money)
+
+		_, _ = c.Writer.Write([]byte("success"))
 	} else {
 		logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 webhook 忽略事件 trade_no=%s callback_type=%s trade_status=%s client_ip=%s verify_info=%q", verifyInfo.ServiceTradeNo, verifyInfo.Type, verifyInfo.TradeStatus, c.ClientIP(), common.GetJsonString(verifyInfo)))
+		_, _ = c.Writer.Write([]byte("success"))
 	}
 }
 

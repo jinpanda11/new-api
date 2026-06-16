@@ -22,7 +22,7 @@ import {
   DEFAULT_PAYMENT_TYPE,
   DEFAULT_MIN_TOPUP,
 } from '../constants'
-import type { PresetAmount, TopupInfo } from '../types'
+import type { PresetAmount, TopupInfo, PaymentMethod } from '../types'
 
 // ============================================================================
 // Payment Processing Functions
@@ -112,6 +112,29 @@ export function getDefaultPaymentType(topupInfo: TopupInfo | null): string {
   }
 
   return DEFAULT_PAYMENT_TYPE
+}
+
+/**
+ * Get maximum topup amount for Epay Gateway 1 from topup info
+ * Returns 0 if there is no limit
+ */
+export function getMaxTopupAmount(topupInfo: TopupInfo | null): number {
+  if (!topupInfo) {
+    return 0
+  }
+  return topupInfo.max_topup || 0
+}
+
+/**
+ * Check if a payment method is an Epay Gateway 1 method (not g2:, not stripe, etc.)
+ */
+export function isEpayGateway1Method(methodType: string): boolean {
+  if (methodType.startsWith('g2:')) return false
+  if (methodType === 'stripe') return false
+  if (methodType === 'creem') return false
+  if (methodType === 'waffo') return false
+  if (methodType === 'waffo_pancake') return false
+  return true
 }
 
 /**

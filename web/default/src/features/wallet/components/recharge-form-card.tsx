@@ -39,6 +39,8 @@ import {
   getDiscountLabel,
   getPaymentIcon,
   getMinTopupAmount,
+  getMaxTopupAmount,
+  isEpayGateway1Method,
   calculatePresetPricing,
 } from '../lib'
 import type {
@@ -311,8 +313,10 @@ export function RechargeFormCard({
                   <div className='grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-3'>
                     {topupInfo?.pay_methods?.map((method) => {
                       const minTopup = method.min_topup || 0
-                      const disabled = minTopup > topupAmount
+                      const maxTopup = getMaxTopupAmount(topupInfo)
                       const isG2 = method.type.startsWith('g2:')
+                      const exceedsMax = !isG2 && maxTopup > 0 && topupAmount > maxTopup
+                      const disabled = minTopup > topupAmount || exceedsMax
                       const bonusRate = topupInfo?.epay_gateway2_bonus
                       const showBonus = isG2 && bonusRate && bonusRate > 0
 
@@ -343,13 +347,24 @@ export function RechargeFormCard({
                         </Button>
                       )
 
-                      return disabled ? (
+                      return minTopup > topupAmount ? (
                         <TooltipProvider key={method.type}>
                           <Tooltip>
                             <TooltipTrigger render={button}></TooltipTrigger>
                             <TooltipContent>
                               {t('Minimum topup amount: {{amount}}', {
                                 amount: minTopup,
+                              })}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : exceedsMax ? (
+                        <TooltipProvider key={method.type}>
+                          <Tooltip>
+                            <TooltipTrigger render={button}></TooltipTrigger>
+                            <TooltipContent>
+                              {t('Maximum topup amount: {{amount}}', {
+                                amount: maxTopup,
                               })}
                             </TooltipContent>
                           </Tooltip>

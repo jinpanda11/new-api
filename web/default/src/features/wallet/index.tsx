@@ -42,6 +42,8 @@ import {
 import {
   getDefaultPaymentType,
   getMinTopupAmount,
+  getMaxTopupAmount,
+  isEpayGateway1Method,
   isWaffoPancakePayment,
 } from './lib'
 import { getCommissionWallet, transferCommissionToBalance } from '@/features/commission/api'
@@ -187,6 +189,14 @@ export function Wallet(props: WalletProps) {
       const minTopup = getMinTopupAmount(topupInfo)
       if (topupAmount < minTopup) {
         return
+      }
+
+      // Validate maximum topup (Gateway 1 only)
+      if (isEpayGateway1Method(method.type)) {
+        const maxTopup = getMaxTopupAmount(topupInfo)
+        if (maxTopup > 0 && topupAmount > maxTopup) {
+          return
+        }
       }
 
       // Calculate payment amount and show confirmation dialog

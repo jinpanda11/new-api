@@ -64,6 +64,7 @@ const defaultBillingSettings: BillingSettings = {
   EpayFee: '',
   Price: 7.3,
   MinTopUp: 1,
+  MaxTopUp: 0,
   CustomCallbackAddress: '',
   PayMethods: '',
   EpayGateway2: '',

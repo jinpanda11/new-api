@@ -138,6 +138,7 @@ const BILLING_SECTIONS = [
           EpayFee: settings.EpayFee ?? '0',
           Price: settings.Price,
           MinTopUp: settings.MinTopUp,
+          MaxTopUp: settings.MaxTopUp,
           CustomCallbackAddress: settings.CustomCallbackAddress,
           PayMethods: settings.PayMethods,
           EpayGateway2: settings.EpayGateway2 ?? '{}',

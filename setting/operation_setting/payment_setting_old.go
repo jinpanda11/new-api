@@ -16,6 +16,7 @@ var EpayKey = ""
 var EpayFee float64 = 0
 var Price = 7.3
 var MinTopUp = 1
+var MaxTopUp = 0 // 0 表示不限制
 var USDExchangeRate = 7.3
 
 // EpayGateway2 holds configuration for a second epay gateway.

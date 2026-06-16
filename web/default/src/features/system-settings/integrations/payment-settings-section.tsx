@@ -93,6 +93,7 @@ const paymentSchema = z.object({
   }),
   Price: z.coerce.number().min(0),
   MinTopUp: z.coerce.number().min(0),
+  MaxTopUp: z.coerce.number().min(0),
   CustomCallbackAddress: z.string().refine((value) => {
     const trimmed = value.trim()
     if (!trimmed) return true
@@ -329,6 +330,7 @@ export function PaymentSettingsSection({
       EpayFee: values.EpayFee,
       Price: values.Price,
       MinTopUp: values.MinTopUp,
+      MaxTopUp: values.MaxTopUp,
       CustomCallbackAddress: removeTrailingSlash(values.CustomCallbackAddress),
       PayMethods: values.PayMethods.trim(),
       EpayGateway2: values.EpayGateway2.trim(),
@@ -374,6 +376,7 @@ export function PaymentSettingsSection({
       EpayFee: initialRef.current.EpayFee,
       Price: initialRef.current.Price,
       MinTopUp: initialRef.current.MinTopUp,
+      MaxTopUp: initialRef.current.MaxTopUp,
       CustomCallbackAddress: removeTrailingSlash(
         initialRef.current.CustomCallbackAddress
       ),
@@ -441,6 +444,10 @@ export function PaymentSettingsSection({
 
     if (sanitized.MinTopUp !== initial.MinTopUp) {
       updates.push({ key: 'MinTopUp', value: sanitized.MinTopUp })
+    }
+
+    if (sanitized.MaxTopUp !== initial.MaxTopUp) {
+      updates.push({ key: 'MaxTopUp', value: sanitized.MaxTopUp })
     }
 
     if (sanitized.CustomCallbackAddress !== initial.CustomCallbackAddress) {
@@ -784,6 +791,28 @@ export function PaymentSettingsSection({
                     </FormControl>
                     <FormDescription>
                       {t('Smallest USD amount users can recharge (Epay)')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='MaxTopUp'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Maximum top-up (USD)')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        step='0.01'
+                        min={0}
+                        {...safeNumberFieldProps(field)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t('Largest USD amount users can recharge (Epay). 0 means no limit')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

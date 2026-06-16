@@ -642,3 +642,79 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 
 	return nil
 }
+
+// RechargeEpay 处理易支付充值（事务内原子更新订单 + 加额度）
+func RechargeEpay(tradeNo string, actualPaymentType string, bonusPercent float64) (quotaToAdd int, bonusQuota int, err error) {
+	if tradeNo == "" {
+		return 0, 0, errors.New("未提供支付单号")
+	}
+
+	topUp := &TopUp{}
+
+	refCol := "`trade_no`"
+	if common.UsingPostgreSQL {
+		refCol = `"trade_no"`
+	}
+
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
+			return errors.New("充值订单不存在")
+		}
+
+		if topUp.PaymentProvider != PaymentProviderEpay {
+			return ErrPaymentMethodMismatch
+		}
+
+		if topUp.Status == common.TopUpStatusSuccess {
+			return nil // 幂等
+		}
+
+		if topUp.Status != common.TopUpStatusPending {
+			return errors.New("充值订单状态错误")
+		}
+
+		// 检查用户是否被禁止充值
+		var chargeUser User
+		if err := tx.Where("id = ?", topUp.UserId).First(&chargeUser).Error; err != nil {
+			return errors.New("用户不存在")
+		}
+		if chargeUser.QuotaForbidden {
+			return errors.New("该用户已被禁止充值")
+		}
+
+		// 同步实际支付方式
+		if actualPaymentType != "" && topUp.PaymentMethod != actualPaymentType {
+			topUp.PaymentMethod = actualPaymentType
+		}
+
+		// 计算额度
+		dAmount := decimal.NewFromInt(topUp.Amount)
+		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+		quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
+		if quotaToAdd <= 0 {
+			return errors.New("无效的充值额度")
+		}
+
+		// 计算加赠
+		bonusQuota = 0
+		if bonusPercent > 0 {
+			bonusQuota = int(float64(quotaToAdd) * bonusPercent / 100.0)
+		}
+
+		totalQuota := quotaToAdd + bonusQuota
+
+		topUp.CompleteTime = common.GetTimestamp()
+		topUp.Status = common.TopUpStatusSuccess
+		if err := tx.Save(topUp).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("quota", gorm.Expr("quota + ?", totalQuota)).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	return
+}
