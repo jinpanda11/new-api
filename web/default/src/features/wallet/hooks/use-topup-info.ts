@@ -216,10 +216,14 @@ export function useTopupInfo() {
   useEffect(() => {
     fetchTopupInfo()
 
-    // Re-fetch when window gains focus (e.g., admin toggles quota_forbidden)
-    const onFocus = () => fetchTopupInfo()
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
+    // Re-fetch when tab becomes visible (e.g., admin toggles quota_forbidden in another tab)
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchTopupInfo()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [])
 
   return {
