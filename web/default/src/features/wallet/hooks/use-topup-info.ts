@@ -215,6 +215,11 @@ export function useTopupInfo() {
 
   useEffect(() => {
     fetchTopupInfo()
+
+    // Re-fetch when window gains focus (e.g., admin toggles quota_forbidden)
+    const onFocus = () => fetchTopupInfo()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [])
 
   return {
