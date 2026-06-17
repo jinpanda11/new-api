@@ -42,6 +42,7 @@ export function CommissionManage() {
   const [configSaving, setConfigSaving] = useState(false)
   const [editDefaultRate, setEditDefaultRate] = useState(0)
   const [editTiers, setEditTiers] = useState<{ min_users: number; rate: number }[]>([])
+  const [editMinWithdraw, setEditMinWithdraw] = useState(0)
 
   // Promoters state
   const [promoters, setPromoters] = useState<PromoterItem[]>([])
@@ -78,6 +79,7 @@ export function CommissionManage() {
         setConfig(res.data as CommissionConfig)
         setEditDefaultRate(res.data.default_rate)
         setEditTiers(res.data.tiers ? [...res.data.tiers] : [])
+        setEditMinWithdraw(res.data.min_withdraw_amount ?? 0)
       }
     } catch {
       // silently fail
@@ -144,6 +146,7 @@ export function CommissionManage() {
       const res = await updateCommissionConfig({
         default_rate: editDefaultRate,
         tiers: editTiers.filter((t) => t.min_users > 0),
+        min_withdraw_amount: editMinWithdraw,
       })
       if (res.success) {
         toast.success(t('Configuration saved'))
@@ -426,6 +429,25 @@ export function CommissionManage() {
                     />
                     <span className="text-sm text-muted-foreground">
                       ({(editDefaultRate * 100).toFixed(1)}%)
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-1 block">
+                    {t('Minimum Withdrawal Amount (USD)')}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={editMinWithdraw}
+                      onChange={(e) => setEditMinWithdraw(Number(e.target.value))}
+                      min="0"
+                      step="0.01"
+                      className="w-32 rounded border px-3 py-2 text-sm"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      (0 = {t('no limit')})
                     </span>
                   </div>
                 </div>

@@ -68,6 +68,7 @@ export interface PromoterItem {
 export interface CommissionConfig {
   default_rate: number
   tiers: CommissionTier[]
+  min_withdraw_amount: number
 }
 
 export interface CommissionDashboardStats {

@@ -23,6 +23,27 @@ import (
 )
 
 func GetTopUpInfo(c *gin.Context) {
+	// 检查用户是否被禁止充值
+	if id := c.GetInt("id"); id > 0 {
+		user, err := model.GetUserById(id, false)
+		if err == nil && user != nil && user.QuotaForbidden {
+			data := gin.H{
+				"enable_online_topup":              false,
+				"enable_stripe_topup":              false,
+				"enable_creem_topup":               false,
+				"enable_waffo_topup":               false,
+				"enable_waffo_pancake_topup":       false,
+				"enable_redemption":                false,
+				"payment_compliance_confirmed":     false,
+				"payment_compliance_terms_version": operation_setting.CurrentComplianceTermsVersion,
+				"pay_methods":                      []map[string]string{},
+				"quota_forbidden":                  true,
+			}
+			common.ApiSuccess(c, data)
+			return
+		}
+	}
+
 	complianceConfirmed := operation_setting.IsPaymentComplianceConfirmed()
 
 	// 获取支付方式
@@ -275,6 +296,10 @@ func RequestEpay(c *gin.Context) {
 	}
 
 	id := c.GetInt("id")
+	if user, err := model.GetUserById(id, false); err == nil && user != nil && user.QuotaForbidden {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "该用户已被禁止充值"})
+		return
+	}
 	group, err := model.GetUserGroup(id, true)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
@@ -542,6 +567,10 @@ func RequestAmount(c *gin.Context) {
 		return
 	}
 	id := c.GetInt("id")
+	if user, err := model.GetUserById(id, false); err == nil && user != nil && user.QuotaForbidden {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "该用户已被禁止充值"})
+		return
+	}
 	group, err := model.GetUserGroup(id, true)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})

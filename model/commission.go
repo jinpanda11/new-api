@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -86,9 +87,10 @@ const CommissionConfigKey = "commission_config"
 const DefaultCommissionRate = 0.05
 
 type CommissionConfig struct {
-	DefaultRate    float64          `json:"default_rate"`
-	Tiers          []CommissionTier `json:"tiers"`
-	MinConsumption float64          `json:"min_consumption"` // minimum total topup money to count as active affiliate
+	DefaultRate       float64          `json:"default_rate"`
+	Tiers             []CommissionTier `json:"tiers"`
+	MinConsumption    float64          `json:"min_consumption"`    // minimum total topup money to count as active affiliate
+	MinWithdrawAmount float64          `json:"min_withdraw_amount"` // minimum amount for withdrawal (0 = no limit)
 }
 
 func GetDefaultCommissionConfig() *CommissionConfig {
@@ -101,7 +103,8 @@ func GetDefaultCommissionConfig() *CommissionConfig {
 			{MinUsers: 50, Rate: 0.15},
 			{MinUsers: 100, Rate: 0.20},
 		},
-		MinConsumption: 10,
+		MinConsumption:    10,
+		MinWithdrawAmount: 0,
 	}
 }
 
@@ -326,6 +329,22 @@ func ProcessCommissionForTopUp(topUpUserId int, topUpId int, money float64) erro
 		}
 	}
 
+	// Convert Epay1 (CNY) to USD for unified commission base
+	if topUpId > 0 {
+		var topUp TopUp
+		if err := DB.Select("payment_provider, payment_method").First(&topUp, topUpId).Error; err == nil {
+			if topUp.PaymentProvider == PaymentProviderEpay && !strings.HasPrefix(topUp.PaymentMethod, "g2:") {
+				exchangeRate := 7.3
+				if rateStr, ok := common.OptionMap["CommissionUSDExchangeRate"]; ok && rateStr != "" {
+					if rate, err := strconv.ParseFloat(rateStr, 64); err == nil && rate > 0 {
+						exchangeRate = rate
+					}
+				}
+				money = money / exchangeRate
+			}
+		}
+	}
+
 	// Find the user
 	var user User
 	if err := DB.First(&user, topUpUserId).Error; err != nil {
@@ -401,6 +420,12 @@ func logCommissionError(topUpId int, userId int, money float64, errMsg string) {
 func CreateWithdrawalRequest(userId int, amount float64, payInfo string) error {
 	if amount <= 0 {
 		return errors.New("提现金额必须大于0")
+	}
+
+	// Check minimum withdrawal amount
+	config := loadCommissionConfig()
+	if config.MinWithdrawAmount > 0 && amount < config.MinWithdrawAmount {
+		return fmt.Errorf("提现金额不能低于 %.2f", config.MinWithdrawAmount)
 	}
 
 	// Check wallet balance
@@ -754,11 +779,20 @@ func GetUserDownline(userId int, page, pageSize int) ([]DownlineUser, int64, err
 		return nil, 0, err
 	}
 
+	// Get dynamic commission exchange rate
+	commissionRate := 7.3
+	if rateStr, ok := common.OptionMap["CommissionUSDExchangeRate"]; ok && rateStr != "" {
+		if rate, err := strconv.ParseFloat(rateStr, 64); err == nil && rate > 0 {
+			commissionRate = rate
+		}
+	}
+
 	// Query with pagination
+	selectExpr := fmt.Sprintf(`users.id, users.username, users.created_at,
+				COALESCE(SUM(CASE WHEN top_ups.payment_provider = 'epay' AND top_ups.payment_method NOT LIKE 'g2:%%' THEN top_ups.money / %f ELSE top_ups.money END), 0) as total_topup,
+				COALESCE(MAX(top_ups.complete_time), 0) as last_topup_at`, commissionRate)
 	rows, err := DB.Table("users").
-		Select(`users.id, users.username, users.created_at,
-				COALESCE(SUM(top_ups.money), 0) as total_topup,
-				COALESCE(MAX(top_ups.complete_time), 0) as last_topup_at`).
+		Select(selectExpr).
 		Joins("LEFT JOIN top_ups ON top_ups.user_id = users.id AND top_ups.status = ?", common.TopUpStatusSuccess).
 		Where("users.inviter_id = ?", userId).
 		Group("users.id").
