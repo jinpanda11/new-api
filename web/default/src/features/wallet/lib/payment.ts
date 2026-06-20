@@ -145,20 +145,27 @@ export function getMinTopupAmount(topupInfo: TopupInfo | null): number {
     return DEFAULT_MIN_TOPUP
   }
 
+  // Collect all enabled gateway minimums and return the smallest.
+  // This prevents one gateway's min from overriding others (e.g. Epay1's
+  // min_topup was previously returned unconditionally when online_topup was
+  // enabled, which meant Waffo Pancake's own min was ignored).
+  const candidates: number[] = []
+
   if (topupInfo.enable_online_topup) {
-    return topupInfo.min_topup
+    candidates.push(topupInfo.min_topup)
   }
-
   if (topupInfo.enable_stripe_topup) {
-    return topupInfo.stripe_min_topup
+    candidates.push(topupInfo.stripe_min_topup)
+  }
+  if (topupInfo.enable_waffo_topup && topupInfo.waffo_min_topup) {
+    candidates.push(topupInfo.waffo_min_topup)
+  }
+  if (topupInfo.enable_waffo_pancake_topup && topupInfo.waffo_pancake_min_topup) {
+    candidates.push(topupInfo.waffo_pancake_min_topup)
   }
 
-  if (topupInfo.enable_waffo_topup) {
-    return topupInfo.waffo_min_topup || DEFAULT_MIN_TOPUP
-  }
-
-  if (topupInfo.enable_waffo_pancake_topup) {
-    return topupInfo.waffo_pancake_min_topup || DEFAULT_MIN_TOPUP
+  if (candidates.length > 0) {
+    return Math.min(...candidates)
   }
 
   return DEFAULT_MIN_TOPUP

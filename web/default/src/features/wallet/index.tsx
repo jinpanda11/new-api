@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { getSelf } from '@/lib/api'
 import { useStatus } from '@/hooks/use-status'
@@ -61,8 +62,16 @@ interface WalletProps {
 
 export function Wallet(props: WalletProps) {
   const { t } = useTranslation()
-  const [user, setUser] = useState<UserWalletData | null>(null)
-  const [userLoading, setUserLoading] = useState(true)
+  const { data: user, isPending: userLoading, refetch: refetchUser } = useQuery({
+    queryKey: ['userSelf'],
+    queryFn: async () => {
+      const response = await getSelf()
+      if (!response.success || !response.data) throw new Error(response.message)
+      return response.data as UserWalletData
+    },
+    staleTime: 30_000,
+  })
+
   const [topupAmount, setTopupAmount] = useState(0)
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
@@ -75,8 +84,24 @@ export function Wallet(props: WalletProps) {
   const [selectedCreemProduct, setSelectedCreemProduct] =
     useState<CreemProduct | null>(null)
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(true)
-  const [commissionWallet, setCommissionWallet] = useState<CommissionWallet | null>(null)
-  const [commissionWalletLoading, setCommissionWalletLoading] = useState(false)
+
+  const { data: commissionWallet, isPending: commissionWalletLoading, refetch: refetchCommissionWallet } = useQuery({
+    queryKey: ['commissionWallet'],
+    queryFn: async () => {
+      const res = await getCommissionWallet()
+      if (!res.success || !res.data) throw new Error(res.message)
+      return res.data as CommissionWallet
+    },
+    staleTime: 30_000,
+  })
+
+  const fetchUser = useCallback(async () => {
+    await refetchUser()
+  }, [refetchUser])
+
+  const fetchCommissionWallet = useCallback(async () => {
+    await refetchCommissionWallet()
+  }, [refetchCommissionWallet])
 
   const { status } = useStatus()
   const { currency } = useSystemConfig()
@@ -105,41 +130,6 @@ export function Wallet(props: WalletProps) {
   const { processing: pancakeProcessing, processWaffoPancakePayment } =
     useWaffoPancakePayment()
 
-  // Fetch and refresh user data
-  const fetchUser = useCallback(async () => {
-    try {
-      setUserLoading(true)
-      const response = await getSelf()
-      if (response.success && response.data) {
-        setUser(response.data as UserWalletData)
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to fetch user data:', error)
-    } finally {
-      setUserLoading(false)
-    }
-  }, [])
-
-  // Fetch commission wallet
-  const fetchCommissionWallet = useCallback(async () => {
-    try {
-      setCommissionWalletLoading(true)
-      const res = await getCommissionWallet()
-      if (res.success && res.data) {
-        setCommissionWallet(res.data as CommissionWallet)
-      }
-    } catch {
-      // silently fail
-    } finally {
-      setCommissionWalletLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchUser()
-    fetchCommissionWallet()
-  }, [fetchUser, fetchCommissionWallet])
 
   useEffect(() => {
     if (props.initialShowHistory) {
@@ -185,8 +175,9 @@ export function Wallet(props: WalletProps) {
     setPaymentLoading(method.type)
 
     try {
-      // Validate minimum topup
-      const minTopup = getMinTopupAmount(topupInfo)
+      // Validate minimum topup — prefer the specific method's min_topup
+      // over the global default so each gateway's own limit is respected.
+      const minTopup = method.min_topup ?? getMinTopupAmount(topupInfo)
       if (topupAmount < minTopup) {
         return
       }

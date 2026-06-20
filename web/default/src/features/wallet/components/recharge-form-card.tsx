@@ -315,7 +315,7 @@ export function RechargeFormCard({
                       const minTopup = method.min_topup || 0
                       const maxTopup = getMaxTopupAmount(topupInfo)
                       const isG2 = method.type.startsWith('g2:')
-                      const exceedsMax = !isG2 && maxTopup > 0 && topupAmount > maxTopup
+                      const exceedsMax = isEpayGateway1Method(method.type) && maxTopup > 0 && topupAmount > maxTopup
                       const disabled = minTopup > topupAmount || exceedsMax
                       const bonusRate = topupInfo?.epay_gateway2_bonus
                       const showBonus = isG2 && bonusRate && bonusRate > 0
