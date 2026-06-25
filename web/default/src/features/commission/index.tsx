@@ -54,6 +54,9 @@ export function Commission() {
   const [downlineLoading, setDownlineLoading] = useState(false)
 
   // Dialogs
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false)
+  const [transferAmount, setTransferAmount] = useState('')
+  const [transferring, setTransferring] = useState(false)
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState(0)
   const [withdrawPayInfo, setWithdrawPayInfo] = useState('')
@@ -157,18 +160,30 @@ export function Commission() {
   }
 
   const handleTransfer = async () => {
-    if (!wallet || wallet.balance <= 0) return
+    const numAmount = parseFloat(transferAmount)
+    if (isNaN(numAmount) || numAmount <= 0) {
+      toast.error(t('Transfer amount must be greater than 0'))
+      return
+    }
+    if (numAmount > (wallet?.balance || 0)) {
+      toast.error(t('Transfer amount cannot exceed available balance'))
+      return
+    }
+    setTransferring(true)
     try {
-      const res = await transferCommissionToBalance(wallet.balance)
+      const res = await transferCommissionToBalance(numAmount)
       if (res.success) {
         toast.success(t('Transfer successful'))
-        fetchWallet()
+        setTransferDialogOpen(false)
+        setTransferAmount('')
+        await fetchWallet()
       } else {
         toast.error(res.message || t('Transfer failed'))
       }
     } catch {
       toast.error(t('Transfer failed'))
     }
+    setTransferring(false)
   }
 
   const handleWithdraw = async () => {
@@ -277,7 +292,7 @@ export function Commission() {
                     variant="default"
                     size="sm"
                     disabled={wallet.balance <= 0}
-                    onClick={handleTransfer}
+                    onClick={() => setTransferDialogOpen(true)}
                   >
                     {t('Transfer to Balance')}
                   </Button>
@@ -581,6 +596,59 @@ export function Commission() {
       </SectionPageLayout.Content>
     </SectionPageLayout>
 
+    {/* Transfer to Balance Dialog */}
+    {transferDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
+            <h3 className="text-lg font-semibold mb-4">{t('Transfer to Balance')}</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">
+                  {t('Amount')}
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={transferAmount}
+                  onChange={(e) => setTransferAmount(e.target.value)}
+                  placeholder="0.00"
+                  min={0}
+                  max={wallet?.balance || 0}
+                  className="w-full rounded border px-3 py-2 text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('Available balance')}: {formatMoney(wallet?.balance || 0)}
+                </p>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setTransferDialogOpen(false)
+                    setTransferAmount('')
+                  }}
+                >
+                  {t('Cancel')}
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={handleTransfer}
+                  disabled={
+                    transferring ||
+                    (() => {
+                      const num = parseFloat(transferAmount)
+                      return isNaN(num) || num <= 0 || num > (wallet?.balance || 0)
+                    })()
+                  }
+                >
+                  {transferring ? t('Transferring...') : t('Transfer to Balance')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     {/* Withdrawal Dialog */}
     {withdrawDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -593,6 +661,7 @@ export function Commission() {
                 </label>
                 <input
                   type="number"
+                  step="0.01"
                   value={withdrawAmount || ''}
                   onChange={(e) => setWithdrawAmount(Number(e.target.value))}
                   placeholder="0.00"

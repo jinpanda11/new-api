@@ -16,7 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { getTopupInfo } from '../api'
 import {
   generatePresetAmounts,
@@ -30,10 +31,6 @@ import type {
   PaymentMethod,
   WaffoPayMethod,
 } from '../types'
-
-// ============================================================================
-// Topup Info Hook
-// ============================================================================
 
 function parseJsonArray(data: unknown): unknown[] {
   if (Array.isArray(data)) {
@@ -162,20 +159,13 @@ function parseDiscountMap(data: unknown): Record<number, number> {
 }
 
 export function useTopupInfo() {
-  const [topupInfo, setTopupInfo] = useState<TopupInfo | null>(null)
-  const [presetAmounts, setPresetAmounts] = useState<PresetAmount[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const fetchTopupInfo = async () => {
-    try {
-      setLoading(true)
-
+  const { data, isPending, refetch } = useQuery({
+    queryKey: ['topupInfo'],
+    queryFn: async () => {
       const response = await getTopupInfo()
 
       if (!response.success || !response.data) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to fetch topup info:', response.message)
-        return
+        throw new Error(response.message || 'Failed to fetch topup info')
       }
 
       const processedData: TopupInfo = {
@@ -192,44 +182,44 @@ export function useTopupInfo() {
         ),
       }
 
-      setTopupInfo(processedData)
-
+      let customPresets: PresetAmount[] = []
       if (processedData.amount_options.length > 0) {
-        const customPresets = mergePresetAmounts(
+        customPresets = mergePresetAmounts(
           processedData.amount_options,
           processedData.discount || {}
         )
-        setPresetAmounts(customPresets)
       } else {
         const minTopup = getMinTopupAmount(processedData)
-        const defaultPresets = generatePresetAmounts(minTopup)
-        setPresetAmounts(defaultPresets)
+        customPresets = generatePresetAmounts(minTopup)
       }
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to fetch topup info:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
+      return { topupInfo: processedData, presetAmounts: customPresets }
+    },
+    staleTime: 30_000,
+    retry: false,
+  })
+
+  // Re-fetch when tab becomes visible (e.g., admin toggles quota_forbidden in another tab).
+  // Throttle to at most once per 30s to avoid triggering API rate limits.
   useEffect(() => {
-    fetchTopupInfo()
-
-    // Re-fetch when tab becomes visible (e.g., admin toggles quota_forbidden in another tab)
+    let lastVisibleFetch = 0
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        fetchTopupInfo()
+        const now = Date.now()
+        if (now - lastVisibleFetch >= 30_000) {
+          lastVisibleFetch = now
+          refetch()
+        }
       }
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
-  }, [])
+  }, [refetch])
 
   return {
-    topupInfo,
-    presetAmounts,
-    loading,
-    refetch: fetchTopupInfo,
+    topupInfo: data?.topupInfo ?? null,
+    presetAmounts: data?.presetAmounts ?? [],
+    loading: isPending,
+    refetch,
   }
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"gorm.io/gorm"
 )
 
@@ -448,8 +449,12 @@ func CreateWithdrawalRequest(userId int, amount float64, payInfo string) error {
 		}
 
 		// Deduct balance
-		if err := tx.Model(&lockedWallet).Update("balance", gorm.Expr("balance - ?", amount)).Error; err != nil {
-			return err
+		result := tx.Model(&lockedWallet).Update("balance", gorm.Expr("balance - ?", amount))
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return errors.New("提现失败：余额更新未生效")
 		}
 
 		// Create withdrawal request
@@ -579,7 +584,7 @@ func TransferCommissionToBalance(userId int, amount float64) error {
 		return errors.New("划转金额过低")
 	}
 
-	return DB.Transaction(func(tx *gorm.DB) error {
+	err = DB.Transaction(func(tx *gorm.DB) error {
 		// Lock wallet
 		var lockedWallet CommissionWallet
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("user_id = ?", userId).First(&lockedWallet).Error; err != nil {
@@ -590,18 +595,34 @@ func TransferCommissionToBalance(userId int, amount float64) error {
 		}
 
 		// Deduct from commission wallet
-		if err := tx.Model(&lockedWallet).Update("balance", gorm.Expr("balance - ?", amount)).Error; err != nil {
-			return err
+		result := tx.Model(&lockedWallet).Update("balance", gorm.Expr("balance - ?", amount))
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return errors.New("划转失败：佣金余额更新未生效")
 		}
 
 		// Add to main quota
-		if err := tx.Model(&User{}).Where("id = ?", userId).
-			Update("quota", gorm.Expr("quota + ?", quota)).Error; err != nil {
-			return err
+		result = tx.Model(&User{}).Where("id = ?", userId).
+			Update("quota", gorm.Expr("quota + ?", quota))
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return errors.New("划转失败：用户余额更新未生效")
 		}
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	// Record usage log (outside transaction, consistent with topup pattern)
+	RecordLog(userId, LogTypeSystem, fmt.Sprintf("佣金划转：%.2f 元 → 余额 %s", amount, logger.LogQuota(quota)))
+
+	return nil
 }
 
 // ============================================================================

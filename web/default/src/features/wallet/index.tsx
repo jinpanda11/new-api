@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { getSelf } from '@/lib/api'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
@@ -225,14 +226,21 @@ export function Wallet(props: WalletProps) {
   }
 
   // Handle commission transfer to balance
-  const handleCommissionTransfer = useCallback(async () => {
-    if (!commissionWallet || commissionWallet.balance <= 0) return
-    const res = await transferCommissionToBalance(commissionWallet.balance)
-    if (res.success) {
-      await fetchUser()
-      await fetchCommissionWallet()
+  const handleCommissionTransfer = useCallback(async (amount: number) => {
+    if (amount <= 0) return
+    try {
+      const res = await transferCommissionToBalance(amount)
+      if (res.success) {
+        toast.success(t('Transfer successful'))
+        await fetchUser()
+        await fetchCommissionWallet()
+      } else {
+        toast.error(res.message || t('Transfer failed'))
+      }
+    } catch {
+      toast.error(t('Transfer failed'))
     }
-  }, [commissionWallet, fetchUser, fetchCommissionWallet])
+  }, [fetchUser, fetchCommissionWallet, t])
 
   // Handle Creem product selection
   const handleCreemProductSelect = (product: CreemProduct) => {

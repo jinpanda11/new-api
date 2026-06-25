@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useState, memo } from 'react'
 import { Share2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -34,12 +35,12 @@ interface AffiliateRewardsCardProps {
   affiliateLink: string
   commissionBalance?: number
   commissionTotalEarned?: number
-  onCommissionTransfer?: () => void
+  onCommissionTransfer?: (amount: number) => void
   complianceConfirmed?: boolean
   loading?: boolean
 }
 
-export function AffiliateRewardsCard({
+export const AffiliateRewardsCard = memo(function AffiliateRewardsCard({
   user,
   affiliateLink,
   commissionBalance = 0,
@@ -49,6 +50,8 @@ export function AffiliateRewardsCard({
   loading,
 }: AffiliateRewardsCardProps) {
   const { t } = useTranslation()
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false)
+  const [transferAmount, setTransferAmount] = useState('')
   if (loading) {
     return (
       <Card className='bg-muted/20 py-0'>
@@ -67,36 +70,37 @@ export function AffiliateRewardsCard({
   const hasCommission = commissionBalance > 0
 
   return (
-    <Card className='bg-muted/20 py-0'>
-      <CardContent className='grid gap-3 p-3 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(200px,1fr)_minmax(180px,0.65fr)_minmax(280px,1fr)] lg:items-center'>
-        <div className='flex min-w-0 items-center gap-2.5'>
-          <div className='bg-background flex size-8 shrink-0 items-center justify-center rounded-lg border'>
-            <Share2 className='text-muted-foreground size-4' />
+    <>
+      <Card className='bg-muted/20 py-0'>
+        <CardContent className='grid gap-3 p-3 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(200px,1fr)_minmax(180px,0.65fr)_minmax(280px,1fr)] lg:items-center'>
+          <div className='flex min-w-0 items-center gap-2.5'>
+            <div className='bg-background flex size-8 shrink-0 items-center justify-center rounded-lg border'>
+              <Share2 className='text-muted-foreground size-4' />
+            </div>
+            <div className='min-w-0'>
+              <h3 className='truncate text-sm font-semibold'>
+                {t('Referral Program')}
+              </h3>
+              <p className='text-muted-foreground line-clamp-1 text-xs'>
+                {t(
+                  'Earn rewards when your referrals add funds. Transfer accumulated rewards to your balance anytime.'
+                )}
+              </p>
+            </div>
           </div>
-          <div className='min-w-0'>
-            <h3 className='truncate text-sm font-semibold'>
-              {t('Referral Program')}
-            </h3>
-            <p className='text-muted-foreground line-clamp-1 text-xs'>
-              {t(
-                'Earn rewards when your referrals add funds. Transfer accumulated rewards to your balance anytime.'
-              )}
-            </p>
-          </div>
-        </div>
 
-        <div className='grid grid-cols-2 gap-1.5 text-center'>
-          {[
-            [t('Pending'), formatUSD(commissionBalance)],
-            [t('Total Earned'), formatUSD(commissionTotalEarned)],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <div className='text-muted-foreground truncate text-[10px] font-medium tracking-wider uppercase'>
-                {label}
-              </div>
-              <div className='mt-0.5 truncate text-sm font-semibold tabular-nums'>
-                {value}
-              </div>
+          <div className='grid grid-cols-2 gap-1.5 text-center'>
+            {[
+              [t('Pending'), formatUSD(commissionBalance)],
+              [t('Total Earned'), formatUSD(commissionTotalEarned)],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <div className='text-muted-foreground truncate text-[10px] font-medium tracking-wider uppercase'>
+                  {label}
+                </div>
+                <div className='mt-0.5 truncate text-sm font-semibold tabular-nums'>
+                  {value}
+                </div>
             </div>
           ))}
         </div>
@@ -117,7 +121,10 @@ export function AffiliateRewardsCard({
           />
           {hasCommission && onCommissionTransfer ? (
             <Button
-              onClick={onCommissionTransfer}
+              onClick={() => {
+                setTransferAmount('')
+                setTransferDialogOpen(true)
+              }}
               disabled={!complianceConfirmed}
               className='h-9 shrink-0 px-3'
               size='sm'
@@ -135,5 +142,64 @@ export function AffiliateRewardsCard({
         ) : null}
       </CardContent>
     </Card>
+
+    {/* Transfer to Balance Dialog */}
+    {transferDialogOpen && (
+      <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
+        <div className='w-full max-w-md rounded-lg bg-card p-6 shadow-lg'>
+          <h3 className='text-lg font-semibold mb-4'>{t('Transfer to Balance')}</h3>
+          <div className='space-y-4'>
+            <div>
+              <label className='text-sm text-muted-foreground mb-1 block'>
+                {t('Amount')}
+              </label>
+              <input
+                type='number'
+                step='0.01'
+                value={transferAmount}
+                onChange={(e) => setTransferAmount(e.target.value)}
+                placeholder='0.00'
+                min={0}
+                max={commissionBalance}
+                className='w-full rounded border px-3 py-2 text-sm'
+              />
+              <p className='text-xs text-muted-foreground mt-1'>
+                {t('Available balance')}: {formatUSD(commissionBalance)}
+              </p>
+            </div>
+            <div className='flex justify-end gap-2 pt-2'>
+              <Button
+                variant='outline'
+                onClick={() => {
+                  setTransferDialogOpen(false)
+                  setTransferAmount('')
+                }}
+              >
+                {t('Cancel')}
+              </Button>
+              <Button
+                variant='default'
+                onClick={() => {
+                  const num = parseFloat(transferAmount)
+                  if (isNaN(num) || num <= 0 || num > commissionBalance) return
+                  onCommissionTransfer?.(num)
+                  setTransferDialogOpen(false)
+                  setTransferAmount('')
+                }}
+                disabled={
+                  (() => {
+                    const num = parseFloat(transferAmount)
+                    return isNaN(num) || num <= 0 || num > commissionBalance
+                  })()
+                }
+              >
+                {t('Transfer to Balance')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   )
-}
+})
