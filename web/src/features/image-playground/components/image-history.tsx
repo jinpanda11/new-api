@@ -16,10 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { Download04Icon } from '@hugeicons/core-free-icons'
+import { HugeiconsIcon } from '@hugeicons/react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 
+import { buildImageFilename, downloadImage, downloadImages } from '../lib/download'
 import type { ImageHistoryItem } from '../types'
 
 interface ImageHistoryProps {
@@ -57,35 +60,72 @@ export function ImageHistory({ history, onClear, onSelect }: ImageHistoryProps) 
       </div>
       <div className='flex-1 overflow-y-auto p-2'>
         <ul className='space-y-2'>
-          {history.map((item) => (
-            <li key={item.id}>
-              <button
-                type='button'
-                onClick={() => onSelect(item)}
-                className='hover:bg-muted flex w-full gap-2 rounded-md border p-2 text-left transition-colors'
-              >
-                <div className='bg-muted h-12 w-12 flex-shrink-0 overflow-hidden rounded'>
-                  {item.images[0] ? (
-                    <img
-                      src={item.images[0].src}
-                      alt=''
-                      className='h-full w-full object-cover'
-                      loading='lazy'
-                    />
+          {history.map((item) => {
+            const downloadable = item.images.length > 0
+            const downloadLabel =
+              item.images.length > 1
+                ? t('Download all')
+                : t('Download')
+            return (
+              <li key={item.id}>
+                <div
+                  role='button'
+                  tabIndex={0}
+                  onClick={() => onSelect(item)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onSelect(item)
+                    }
+                  }}
+                  className='hover:bg-muted group relative flex w-full cursor-pointer gap-2 rounded-md border p-2 text-left transition-colors'
+                >
+                  <div className='bg-muted h-12 w-12 flex-shrink-0 overflow-hidden rounded'>
+                    {item.images[0] ? (
+                      <img
+                        src={item.images[0].src}
+                        alt=''
+                        className='h-full w-full object-cover'
+                        loading='lazy'
+                      />
+                    ) : null}
+                  </div>
+                  <div className='min-w-0 flex-1 pr-8'>
+                    <p className='truncate text-xs font-medium'>{item.prompt}</p>
+                    <p className='text-muted-foreground mt-0.5 text-[10px]'>
+                      {item.model} · {item.size} · n={item.n}
+                    </p>
+                    <p className='text-muted-foreground text-[10px]'>
+                      {formatTime(item.createdAt)}
+                    </p>
+                  </div>
+                  {downloadable ? (
+                    <button
+                      type='button'
+                      title={downloadLabel}
+                      aria-label={downloadLabel}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (item.images.length === 1) {
+                          const img = item.images[0]
+                          downloadImage(img.src, buildImageFilename(img.src))
+                        } else {
+                          downloadImages(item.images)
+                        }
+                      }}
+                      className='bg-background/80 hover:bg-background absolute top-1.5 right-1.5 flex size-7 items-center justify-center rounded-md opacity-0 shadow transition-opacity group-hover:opacity-100 focus:opacity-100'
+                    >
+                      <HugeiconsIcon
+                        icon={Download04Icon}
+                        className='size-3.5'
+                        strokeWidth={2}
+                      />
+                    </button>
                   ) : null}
                 </div>
-                <div className='min-w-0 flex-1'>
-                  <p className='truncate text-xs font-medium'>{item.prompt}</p>
-                  <p className='text-muted-foreground mt-0.5 text-[10px]'>
-                    {item.model} · {item.size} · n={item.n}
-                  </p>
-                  <p className='text-muted-foreground text-[10px]'>
-                    {formatTime(item.createdAt)}
-                  </p>
-                </div>
-              </button>
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
       </div>
     </div>

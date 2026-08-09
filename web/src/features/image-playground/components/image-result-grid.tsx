@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Spinner } from '@/components/ui/spinner'
 
+import { buildImageFilename, downloadImage } from '../lib/download'
 import type { ImageResultImage } from '../types'
 
 interface ImageResultGridProps {
@@ -29,17 +30,6 @@ interface ImageResultGridProps {
   revisedPrompt: string | null
   isGenerating: boolean
   errorMessage: string | null
-}
-
-function downloadImage(src: string, filename: string) {
-  const a = document.createElement('a')
-  a.href = src
-  a.download = filename
-  a.rel = 'noopener'
-  a.target = '_blank'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
 }
 
 export function ImageResultGrid({
@@ -88,8 +78,8 @@ export function ImageResultGrid({
         </div>
       ) : null}
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-        {images.map((img) => {
-          const filename = `image-${Date.now()}-${img.src.slice(-8)}.png`
+        {images.map((img, index) => {
+          const filename = buildImageFilename(img.src, index)
           return (
             <div
               key={img.src}
