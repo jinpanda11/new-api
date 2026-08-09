@@ -63,7 +63,11 @@ const numericString = z.string().refine((value) => {
   return !Number.isNaN(Number(trimmed)) && Number(trimmed) >= 0
 }, 'Enter a non-negative number or leave empty')
 
-const channelTestModes = ['scheduled_all', 'passive_recovery'] as const
+const channelTestModes = [
+  'scheduled_all',
+  'scheduled_representative',
+  'passive_recovery',
+] as const
 type ChannelTestMode = (typeof channelTestModes)[number]
 
 const routingReliabilitySchema = z
@@ -148,7 +152,9 @@ type NormalizedRoutingReliabilityValues = {
 }
 
 function normalizeChannelTestMode(value?: string): ChannelTestMode {
-  return value === 'passive_recovery' ? 'passive_recovery' : 'scheduled_all'
+  if (value === 'passive_recovery') return 'passive_recovery'
+  if (value === 'scheduled_representative') return 'scheduled_representative'
+  return 'scheduled_all'
 }
 
 const buildFormDefaults = (
@@ -394,6 +400,10 @@ export function RoutingReliabilitySection({
                           label: t('Scheduled full test'),
                         },
                         {
+                          value: 'scheduled_representative',
+                          label: t('Scheduled representative per group'),
+                        },
+                        {
                           value: 'passive_recovery',
                           label: t('Passive recovery only'),
                         },
@@ -411,6 +421,9 @@ export function RoutingReliabilitySection({
                           <SelectItem value='scheduled_all'>
                             {t('Scheduled full test')}
                           </SelectItem>
+                          <SelectItem value='scheduled_representative'>
+                            {t('Scheduled representative per group')}
+                          </SelectItem>
                           <SelectItem value='passive_recovery'>
                             {t('Passive recovery only')}
                           </SelectItem>
@@ -419,7 +432,7 @@ export function RoutingReliabilitySection({
                     </Select>
                     <FormDescription>
                       {t(
-                        'Scheduled full test probes non-manually-disabled channels; passive recovery only checks auto-disabled channels after real request failures.'
+                        'Scheduled full test probes non-manually-disabled channels; representative-per-group tests only one channel (highest priority, then weight, then lowest id) from each group to save upstream cost; passive recovery only checks auto-disabled channels after real request failures.'
                       )}
                     </FormDescription>
                     <FormMessage />
@@ -446,7 +459,11 @@ export function RoutingReliabilitySection({
                         ? t(
                             'How frequently the system checks auto-disabled channels for recovery'
                           )
-                        : t('How frequently the system tests all channels')}
+                        : channelTestMode === 'scheduled_representative'
+                          ? t(
+                              'How frequently the system tests one representative channel per group'
+                            )
+                          : t('How frequently the system tests all channels')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

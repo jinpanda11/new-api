@@ -312,6 +312,43 @@ func TestSelectChannelsForAutomaticTestScheduledSkipsManualDisabled(t *testing.T
 	require.Equal(t, 2, selected[1].Id)
 }
 
+func TestSelectChannelsForAutomaticTestScheduledRepresentativePicksOnePerGroup(t *testing.T) {
+	prio := func(v int64) *int64 { return &v }
+	weight := func(v uint) *uint { return &v }
+
+	channels := []*model.Channel{
+		// group "openai" — Id 2 wins on Priority
+		{Id: 1, Status: common.ChannelStatusEnabled, Group: "openai", Priority: prio(1)},
+		{Id: 2, Status: common.ChannelStatusEnabled, Group: "openai", Priority: prio(5)},
+		{Id: 3, Status: common.ChannelStatusEnabled, Group: "openai", Priority: prio(1)},
+
+		// group "gemini" — same Priority, Id 4 wins on Weight
+		{Id: 4, Status: common.ChannelStatusEnabled, Group: "gemini", Priority: prio(0), Weight: weight(9)},
+		{Id: 5, Status: common.ChannelStatusEnabled, Group: "gemini", Priority: prio(0), Weight: weight(1)},
+
+		// Id 6 covers two groups; already represented by "openai" via Id 2,
+		// so it should represent "claude" only, and only appear once.
+		{Id: 6, Status: common.ChannelStatusEnabled, Group: "openai,claude", Priority: prio(0)},
+
+		// Auto-disabled channel is still eligible so it can be recovered.
+		{Id: 7, Status: common.ChannelStatusAutoDisabled, Group: "recover"},
+
+		// Manually disabled channels are excluded regardless of group.
+		{Id: 8, Status: common.ChannelStatusManuallyDisabled, Group: "openai"},
+
+		// Channel with no group name — kept as its own representative.
+		{Id: 9, Status: common.ChannelStatusEnabled, Group: ""},
+	}
+
+	selected := selectChannelsForAutomaticTest(channels, operation_setting.ChannelTestModeScheduledRepresentative)
+
+	ids := make([]int, 0, len(selected))
+	for _, ch := range selected {
+		ids = append(ids, ch.Id)
+	}
+	assert.ElementsMatch(t, []int{2, 4, 6, 7, 9}, ids)
+}
+
 func TestTestAllChannelsRejectsExistingActiveTask(t *testing.T) {
 	db := setupModelListControllerTestDB(t)
 	require.NoError(t, db.AutoMigrate(&model.SystemTask{}, &model.SystemTaskLock{}))

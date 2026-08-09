@@ -1048,6 +1048,9 @@ func runChannelTestTask(ctx context.Context, mode string, notify bool, report fu
 }
 
 func selectChannelsForAutomaticTest(channels []*model.Channel, mode string) []*model.Channel {
+	if mode == operation_setting.ChannelTestModeScheduledRepresentative {
+		return selectRepresentativeChannelsPerGroup(channels)
+	}
 	selected := make([]*model.Channel, 0, len(channels))
 	for _, channel := range channels {
 		if channel.Status == common.ChannelStatusManuallyDisabled {
@@ -1057,6 +1060,68 @@ func selectChannelsForAutomaticTest(channels []*model.Channel, mode string) []*m
 			continue
 		}
 		selected = append(selected, channel)
+	}
+	return selected
+}
+
+// selectRepresentativeChannelsPerGroup groups Enabled channels by their Group
+// field and picks a single representative per group using the same rule as the
+// status page (Priority desc → Weight desc → Id asc). Channels belonging to
+// multiple groups are deduplicated by Id. Auto-disabled channels are also
+// included so the test loop can recover them when they succeed. Manually
+// disabled channels are skipped. Channels with no group name fall into a
+// synthetic bucket keyed by their own Id, i.e. each ungrouped channel remains
+// its own representative (there is no meaningful group to consolidate them
+// under).
+func selectRepresentativeChannelsPerGroup(channels []*model.Channel) []*model.Channel {
+	groupBuckets := make(map[string][]*model.Channel)
+	orderedGroupKeys := make([]string, 0)
+	ungrouped := make([]*model.Channel, 0)
+	for _, ch := range channels {
+		if ch == nil {
+			continue
+		}
+		if ch.Status == common.ChannelStatusManuallyDisabled {
+			continue
+		}
+		groups := ch.GetGroups()
+		nonEmpty := false
+		for _, g := range groups {
+			name := strings.TrimSpace(g)
+			if name == "" {
+				continue
+			}
+			nonEmpty = true
+			key := strings.ToLower(name)
+			if _, ok := groupBuckets[key]; !ok {
+				orderedGroupKeys = append(orderedGroupKeys, key)
+			}
+			groupBuckets[key] = append(groupBuckets[key], ch)
+		}
+		if !nonEmpty {
+			ungrouped = append(ungrouped, ch)
+		}
+	}
+
+	selected := make([]*model.Channel, 0, len(orderedGroupKeys)+len(ungrouped))
+	seenIds := make(map[int]struct{}, len(orderedGroupKeys)+len(ungrouped))
+	for _, key := range orderedGroupKeys {
+		rep := pickRepresentativeChannel(groupBuckets[key])
+		if rep == nil {
+			continue
+		}
+		if _, dup := seenIds[rep.Id]; dup {
+			continue
+		}
+		seenIds[rep.Id] = struct{}{}
+		selected = append(selected, rep)
+	}
+	for _, ch := range ungrouped {
+		if _, dup := seenIds[ch.Id]; dup {
+			continue
+		}
+		seenIds[ch.Id] = struct{}{}
+		selected = append(selected, ch)
 	}
 	return selected
 }
