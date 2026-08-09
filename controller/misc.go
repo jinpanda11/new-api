@@ -109,6 +109,11 @@ func GetStatus(c *gin.Context) {
 		"SidebarModulesAdmin": common.OptionMap["SidebarModulesAdmin"],
 		"CustomPageTitle":     common.OptionMap["CustomPageTitle"],
 
+		// 画图工作台默认值
+		"ImagePlaygroundDefaultSize":   common.OptionMap["ImagePlaygroundDefaultSize"],
+		"ImagePlaygroundSizeOptions":   common.OptionMap["ImagePlaygroundSizeOptions"],
+		"ImagePlaygroundDefaultModel":  common.OptionMap["ImagePlaygroundDefaultModel"],
+
 		"oidc_enabled":                system_setting.GetOIDCSettings().Enabled,
 		"oidc_client_id":              system_setting.GetOIDCSettings().ClientId,
 		"oidc_authorization_endpoint": system_setting.GetOIDCSettings().AuthorizationEndpoint,

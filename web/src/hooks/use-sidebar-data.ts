@@ -25,6 +25,7 @@ import {
   FlaskConical,
   Gift,
   HelpCircle,
+  Image,
   Key,
   LayoutDashboard,
   ListTodo,
@@ -61,6 +62,11 @@ export function useSidebarData(): SidebarData {
             title: t('Playground'),
             url: '/playground',
             icon: FlaskConical,
+          },
+          {
+            title: t('Image Playground'),
+            url: '/image-playground',
+            icon: Image,
           },
           {
             title: t('Chat'),

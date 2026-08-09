@@ -59,6 +59,7 @@ export const SIDEBAR_MODULES_DEFAULT: SidebarModulesAdminConfig = {
   chat: {
     enabled: true,
     playground: true,
+    'image-playground': true,
     chat: true,
   },
   console: {
@@ -241,4 +242,76 @@ export function serializeSidebarModulesAdmin(
   config: SidebarModulesAdminConfig
 ): string {
   return JSON.stringify(config)
+}
+
+export type ImagePlaygroundSizeOption = {
+  label: string
+  value: string
+}
+
+export const IMAGE_PLAYGROUND_SIZE_OPTIONS_DEFAULT: ImagePlaygroundSizeOption[] = [
+  { label: '1024x1024 (square)', value: '1024x1024' },
+  { label: '1536x1024 (landscape)', value: '1536x1024' },
+  { label: '1024x1536 (portrait)', value: '1024x1536' },
+  { label: '2048x2048 (2K square)', value: '2048x2048' },
+  { label: '2048x1152 (2K landscape)', value: '2048x1152' },
+  { label: '3840x2160 (4K landscape)', value: '3840x2160' },
+  { label: '2160x3840 (4K portrait)', value: '2160x3840' },
+  { label: 'auto (default)', value: 'auto' },
+]
+
+export const IMAGE_PLAYGROUND_DEFAULT_SIZE_DEFAULT = 'auto'
+
+export function parseImagePlaygroundSizeOptions(
+  value: string | null | undefined
+): ImagePlaygroundSizeOption[] {
+  if (!value || value.trim() === '') {
+    return IMAGE_PLAYGROUND_SIZE_OPTIONS_DEFAULT.map((option) => ({ ...option }))
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (!Array.isArray(parsed)) {
+      return IMAGE_PLAYGROUND_SIZE_OPTIONS_DEFAULT.map((o) => ({ ...o }))
+    }
+
+    const result: ImagePlaygroundSizeOption[] = []
+    for (const item of parsed) {
+      if (!item || typeof item !== 'object') continue
+      const record = item as Record<string, unknown>
+      const rawValue = record.value
+      if (typeof rawValue !== 'string') continue
+      const trimmedValue = rawValue.trim()
+      if (trimmedValue === '') continue
+      const rawLabel = record.label
+      const label =
+        typeof rawLabel === 'string' && rawLabel.trim() !== ''
+          ? rawLabel.trim()
+          : trimmedValue
+      result.push({ label, value: trimmedValue })
+    }
+
+    if (result.length === 0) {
+      return IMAGE_PLAYGROUND_SIZE_OPTIONS_DEFAULT.map((o) => ({ ...o }))
+    }
+    return result
+  } catch {
+    return IMAGE_PLAYGROUND_SIZE_OPTIONS_DEFAULT.map((o) => ({ ...o }))
+  }
+}
+
+export function serializeImagePlaygroundSizeOptions(
+  options: ImagePlaygroundSizeOption[]
+): string {
+  const cleaned = options
+    .map((option) => ({
+      label: option.label.trim(),
+      value: option.value.trim(),
+    }))
+    .filter((option) => option.value !== '')
+    .map((option) => ({
+      label: option.label === '' ? option.value : option.label,
+      value: option.value,
+    }))
+  return JSON.stringify(cleaned)
 }

@@ -38,6 +38,9 @@ const defaultSiteSettings: SiteSettings = {
   SidebarModulesAdmin: '',
   CustomPageTitle: 'Custom Page',
   CustomPageContent: '',
+  ImagePlaygroundDefaultSize: '',
+  ImagePlaygroundSizeOptions: '',
+  ImagePlaygroundDefaultModel: '',
 }
 
 export function SiteSettings() {

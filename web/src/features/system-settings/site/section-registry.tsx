@@ -24,6 +24,7 @@ import {
   serializeSidebarModulesAdmin,
 } from '../maintenance/config'
 import { HeaderNavigationSection } from '../maintenance/header-navigation-section'
+import { ImagePlaygroundDefaultsSection } from '../maintenance/image-playground-defaults-section'
 import { NoticeSection } from '../maintenance/notice-section'
 import { SidebarModulesSection } from '../maintenance/sidebar-modules-section'
 import { CustomPageSection } from '../content/custom-page-section'
@@ -95,6 +96,22 @@ const SITE_SECTIONS = [
       <CustomPageSection
         defaultTitle={settings.CustomPageTitle ?? ''}
         defaultContent={settings.CustomPageContent ?? ''}
+      />
+    ),
+  },
+  {
+    id: 'image-playground-defaults',
+    titleKey: 'Image playground defaults',
+    build: (settings: SiteSettings) => (
+      <ImagePlaygroundDefaultsSection
+        defaultValues={{
+          ImagePlaygroundDefaultSize:
+            settings.ImagePlaygroundDefaultSize ?? '',
+          ImagePlaygroundSizeOptions:
+            settings.ImagePlaygroundSizeOptions ?? '',
+          ImagePlaygroundDefaultModel:
+            settings.ImagePlaygroundDefaultModel ?? '',
+        }}
       />
     ),
   },

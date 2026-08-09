@@ -120,6 +120,9 @@ export type SiteSettings = {
   SidebarModulesAdmin: string
   CustomPageTitle: string
   CustomPageContent: string
+  ImagePlaygroundDefaultSize: string
+  ImagePlaygroundSizeOptions: string
+  ImagePlaygroundDefaultModel: string
 }
 
 export type AuthSettings = {
