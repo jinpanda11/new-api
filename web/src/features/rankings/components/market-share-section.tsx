@@ -93,6 +93,8 @@ type MarketShareSectionProps = {
   history: VendorShareSeries
   rows: VendorRanking[]
   period: RankingPeriod
+  /** Display multiplier applied to token counts (1 = no scaling). */
+  multiplier?: number
 }
 
 /**
@@ -111,6 +113,7 @@ export function MarketShareSection(props: MarketShareSectionProps) {
     resolvedTheme === 'dark'
       ? 'rgba(255, 255, 255, 0.12)'
       : 'rgba(15, 23, 42, 0.12)'
+  const multiplier = props.multiplier && props.multiplier > 0 ? props.multiplier : 1
 
   const colourMap = useMemo(
     () => buildVendorColourMap(props.history.vendors.map((v) => v.name)),
@@ -172,7 +175,7 @@ export function MarketShareSection(props: MarketShareSectionProps) {
               key: (datum: Record<string, unknown>) =>
                 String(datum?.vendor ?? ''),
               value: (datum: Record<string, unknown>) =>
-                `${(Number(datum?.share) * 100).toFixed(1)}% · ${formatTokens(Number(datum?.tokens) || 0)}`,
+                `${(Number(datum?.share) * 100).toFixed(1)}% · ${formatTokens((Number(datum?.tokens) || 0) * multiplier)}`,
             },
           ],
         },
@@ -204,7 +207,7 @@ export function MarketShareSection(props: MarketShareSectionProps) {
       },
       animationAppear: { duration: 500 },
     }
-  }, [chartGridColor, chartTextColor, colourMap, orderedPoints])
+  }, [chartGridColor, chartTextColor, colourMap, multiplier, orderedPoints])
 
   const visible = props.rows.slice(0, MAX_VENDORS_IN_LIST)
   const half = Math.ceil(visible.length / 2)
@@ -260,9 +263,17 @@ export function MarketShareSection(props: MarketShareSectionProps) {
           </div>
         ) : (
           <div className='grid grid-cols-1 gap-x-8 px-5 pt-1 pb-4 md:grid-cols-2'>
-            <VendorList rows={left} colourMap={colourMap} />
+            <VendorList
+              rows={left}
+              colourMap={colourMap}
+              multiplier={multiplier}
+            />
             {right.length > 0 && (
-              <VendorList rows={right} colourMap={colourMap} />
+              <VendorList
+                rows={right}
+                colourMap={colourMap}
+                multiplier={multiplier}
+              />
             )}
           </div>
         )}
@@ -274,6 +285,7 @@ export function MarketShareSection(props: MarketShareSectionProps) {
 function VendorList(props: {
   rows: VendorRanking[]
   colourMap: Record<string, string>
+  multiplier: number
 }) {
   return (
     <ul>
@@ -297,7 +309,7 @@ function VendorList(props: {
           </VendorLink>
           <div className='shrink-0 text-right'>
             <div className='text-foreground font-mono text-sm font-semibold tabular-nums'>
-              {formatTokens(vendor.total_tokens)}
+              {formatTokens(vendor.total_tokens * props.multiplier)}
             </div>
             <div className='text-muted-foreground/80 font-mono text-[11px] tabular-nums'>
               {formatShare(vendor.share)}

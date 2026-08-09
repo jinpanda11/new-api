@@ -350,6 +350,7 @@ export type OperationsSettings = {
   DemoSiteEnabled: boolean
   SelfUseModeEnabled: boolean
   QuotaRemindThreshold: string
+  'ranking_setting.display_multiplier': number
   SMTPServer: string
   SMTPPort: string
   SMTPAccount: string
@@ -359,6 +360,9 @@ export type OperationsSettings = {
   SMTPStartTLSEnabled: boolean
   SMTPInsecureSkipVerify: boolean
   SMTPForceAuthLogin: boolean
+  TicketEmailNotifyEnabled: boolean
+  TicketAdminNotifyEmails: string
+  TicketNotifyStatusChangeEnabled: boolean
   WorkerUrl: string
   WorkerValidKey: string
   WorkerAllowHttpImageRequestEnabled: boolean

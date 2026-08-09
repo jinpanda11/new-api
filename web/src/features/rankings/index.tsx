@@ -48,6 +48,11 @@ export function Rankings() {
   const rankingsQuery = useRankings(period)
   const snapshot = rankingsQuery.data?.data
 
+  const multiplier =
+    snapshot?.display_multiplier && snapshot.display_multiplier > 0
+      ? snapshot.display_multiplier
+      : 1
+
   const handlePeriodChange = (next: RankingPeriod) => {
     navigate({
       to: '/rankings',
@@ -92,12 +97,14 @@ export function Rankings() {
                 history={snapshot.models_history}
                 rows={snapshot.models}
                 period={period}
+                multiplier={multiplier}
               />
 
               <MarketShareSection
                 history={snapshot.vendor_share_history}
                 rows={snapshot.vendors}
                 period={period}
+                multiplier={multiplier}
               />
 
               <PulseSection

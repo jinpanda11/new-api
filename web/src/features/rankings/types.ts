@@ -135,4 +135,10 @@ export type RankingsSnapshot = {
   models_history: ModelHistorySeries
   /** 100%-stacked area history of token share by vendor over the period. */
   vendor_share_history: VendorShareSeries
+  /**
+   * Display multiplier for token counts on this page. The backend always
+   * returns real values; the page multiplies token *displays* by this factor
+   * only. 1 (or absent) means no scaling.
+   */
+  display_multiplier?: number
 }

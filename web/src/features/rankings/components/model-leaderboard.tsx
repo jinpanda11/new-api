@@ -32,6 +32,8 @@ type ModelLeaderboardProps = {
   variant?: 'default' | 'compact'
   /** Optional cap (rows beyond this are dropped). */
   limit?: number
+  /** Display multiplier applied to token counts (1 = no scaling). */
+  multiplier?: number
 }
 
 /**
@@ -49,6 +51,7 @@ export function ModelLeaderboard(props: ModelLeaderboardProps) {
   const left = limited.slice(0, half)
   const right = limited.slice(half)
   const variant = props.variant ?? 'default'
+  const multiplier = props.multiplier && props.multiplier > 0 ? props.multiplier : 1
 
   if (limited.length === 0) {
     return null
@@ -56,8 +59,10 @@ export function ModelLeaderboard(props: ModelLeaderboardProps) {
 
   return (
     <div className='grid grid-cols-1 gap-x-8 md:grid-cols-2'>
-      <ModelList rows={left} variant={variant} />
-      {right.length > 0 && <ModelList rows={right} variant={variant} />}
+      <ModelList rows={left} variant={variant} multiplier={multiplier} />
+      {right.length > 0 && (
+        <ModelList rows={right} variant={variant} multiplier={multiplier} />
+      )}
     </div>
   )
 }
@@ -65,6 +70,7 @@ export function ModelLeaderboard(props: ModelLeaderboardProps) {
 function ModelList(props: {
   rows: ModelRanking[]
   variant: 'default' | 'compact'
+  multiplier: number
 }) {
   const { t } = useTranslation()
   const compact = props.variant === 'compact'
@@ -117,7 +123,7 @@ function ModelList(props: {
                   : 'text-foreground font-mono text-sm font-semibold tabular-nums'
               }
             >
-              {formatTokens(row.total_tokens)}
+              {formatTokens(row.total_tokens * props.multiplier)}
               {!compact && (
                 <>
                   {' '}

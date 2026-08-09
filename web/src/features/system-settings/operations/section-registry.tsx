@@ -19,12 +19,14 @@ For commercial licensing, please contact support@quantumnous.com
 import { SystemBehaviorSection } from '../general/system-behavior-section'
 import { EmailSettingsSection } from '../integrations/email-settings-section'
 import { MonitoringSettingsSection } from '../integrations/monitoring-settings-section'
+import { TicketNotifySection } from '../integrations/ticket-notify-section'
 import { WorkerSettingsSection } from '../integrations/worker-settings-section'
 import { LogSettingsSection } from '../maintenance/log-settings-section'
 import { PerformanceSection } from '../maintenance/performance-section'
 import { UpdateCheckerSection } from '../maintenance/update-checker-section'
 import type { OperationsSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
+import { RankingSettingsSection } from './ranking-settings-section'
 
 const OPERATIONS_SECTIONS = [
   {
@@ -36,6 +38,18 @@ const OPERATIONS_SECTIONS = [
           DefaultCollapseSidebar: settings.DefaultCollapseSidebar,
           DemoSiteEnabled: settings.DemoSiteEnabled,
           SelfUseModeEnabled: settings.SelfUseModeEnabled,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'ranking',
+    titleKey: 'Ranking Settings',
+    build: (settings: OperationsSettings) => (
+      <RankingSettingsSection
+        defaultValues={{
+          'ranking_setting.display_multiplier':
+            settings['ranking_setting.display_multiplier'] ?? 1,
         }}
       />
     ),
@@ -74,6 +88,20 @@ const OPERATIONS_SECTIONS = [
           SMTPStartTLSEnabled: settings.SMTPStartTLSEnabled,
           SMTPInsecureSkipVerify: settings.SMTPInsecureSkipVerify,
           SMTPForceAuthLogin: settings.SMTPForceAuthLogin,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'ticket-notify',
+    titleKey: 'Ticket Email Notification',
+    build: (settings: OperationsSettings) => (
+      <TicketNotifySection
+        defaultValues={{
+          TicketEmailNotifyEnabled: settings.TicketEmailNotifyEnabled,
+          TicketAdminNotifyEmails: settings.TicketAdminNotifyEmails,
+          TicketNotifyStatusChangeEnabled:
+            settings.TicketNotifyStatusChangeEnabled,
         }}
       />
     ),

@@ -8,6 +8,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -144,6 +145,8 @@ func CreateTicket(c *gin.Context) {
 		return
 	}
 
+	go service.NotifyTicketEvent("created", ticket, nil)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "工单创建成功",
@@ -251,7 +254,7 @@ func AddTicketMessage(c *gin.Context) {
 	}
 
 	// Verify ticket ownership
-	_, err = model.GetTicketById(ticketId, userId)
+	ticket, err := model.GetTicketById(ticketId, userId)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -275,6 +278,8 @@ func AddTicketMessage(c *gin.Context) {
 		})
 		return
 	}
+
+	go service.NotifyTicketEvent("user_replied", ticket, map[string]string{"message": req.Content})
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -502,7 +507,7 @@ func AddTicketMessageAdmin(c *gin.Context) {
 	}
 
 	// Verify ticket exists
-	_, err = model.GetTicketByIdAdmin(ticketId)
+	ticket, err := model.GetTicketByIdAdmin(ticketId)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -532,6 +537,7 @@ func AddTicketMessageAdmin(c *gin.Context) {
 		if err := model.UpdateTicketStatus(ticketId, model.TicketStatusWaitingUser); err != nil {
 			common.SysError(fmt.Sprintf("failed to update ticket status: %v", err))
 		}
+		go service.NotifyTicketEvent("admin_replied", ticket, map[string]string{"message": req.Content})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -576,6 +582,8 @@ func UpdateTicketStatusAdmin(c *gin.Context) {
 		return
 	}
 
+	ticket, _ := model.GetTicketByIdAdmin(ticketId)
+
 	if err := model.UpdateTicketStatus(ticketId, req.Status); err != nil {
 		common.SysError(fmt.Sprintf("failed to update ticket status: %v", err))
 		c.JSON(http.StatusOK, gin.H{
@@ -584,6 +592,8 @@ func UpdateTicketStatusAdmin(c *gin.Context) {
 		})
 		return
 	}
+
+	go service.NotifyTicketEvent("status_changed", ticket, nil)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

@@ -66,6 +66,9 @@ func InitOptionMap() {
 	common.OptionMap["SMTPStartTLSEnabled"] = strconv.FormatBool(common.SMTPStartTLSEnabled)
 	common.OptionMap["SMTPInsecureSkipVerify"] = strconv.FormatBool(common.SMTPInsecureSkipVerify)
 	common.OptionMap["SMTPForceAuthLogin"] = strconv.FormatBool(common.SMTPForceAuthLogin)
+	common.OptionMap["TicketEmailNotifyEnabled"] = strconv.FormatBool(common.TicketEmailNotifyEnabled)
+	common.OptionMap["TicketAdminNotifyEmails"] = ""
+	common.OptionMap["TicketNotifyStatusChangeEnabled"] = strconv.FormatBool(common.TicketNotifyStatusChangeEnabled)
 	common.OptionMap["Notice"] = ""
 	common.OptionMap["About"] = ""
 	common.OptionMap["HomePageContent"] = ""
@@ -390,6 +393,10 @@ func updateOptionMap(key string, value string) (err error) {
 			common.SMTPInsecureSkipVerify = boolValue
 		case "SMTPForceAuthLogin":
 			common.SMTPForceAuthLogin = boolValue
+		case "TicketEmailNotifyEnabled":
+			common.TicketEmailNotifyEnabled = boolValue
+		case "TicketNotifyStatusChangeEnabled":
+			common.TicketNotifyStatusChangeEnabled = boolValue
 		case "WorkerAllowHttpImageRequestEnabled":
 			system_setting.WorkerAllowHttpImageRequestEnabled = boolValue
 		case "DefaultUseAutoGroup":
@@ -412,6 +419,8 @@ func updateOptionMap(key string, value string) (err error) {
 		common.SMTPFrom = value
 	case "SMTPToken":
 		common.SMTPToken = value
+	case "TicketAdminNotifyEmails":
+		common.TicketAdminNotifyEmails = value
 	case "ServerAddress":
 		system_setting.ServerAddress = value
 	case "WorkerUrl":

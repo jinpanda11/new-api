@@ -105,6 +105,11 @@ var SMTPAccount = ""
 var SMTPFrom = ""
 var SMTPToken = ""
 
+// Ticket email notification
+var TicketEmailNotifyEnabled = false
+var TicketAdminNotifyEmails = ""            // comma-separated; empty falls back to root user email
+var TicketNotifyStatusChangeEnabled = false // whether status changes also notify the owner
+
 var GitHubClientId = ""
 var GitHubClientSecret = ""
 var LinuxDOClientId = ""

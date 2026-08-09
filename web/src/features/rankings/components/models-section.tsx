@@ -41,6 +41,8 @@ type ModelsSectionProps = {
   history: ModelHistorySeries
   rows: ModelRanking[]
   period: RankingPeriod
+  /** Display multiplier applied to token counts (1 = no scaling). */
+  multiplier?: number
 }
 
 /**
@@ -59,6 +61,7 @@ export function ModelsSection(props: ModelsSectionProps) {
     resolvedTheme === 'dark'
       ? 'rgba(255, 255, 255, 0.12)'
       : 'rgba(15, 23, 42, 0.12)'
+  const multiplier = props.multiplier && props.multiplier > 0 ? props.multiplier : 1
 
   // Order points so the largest model appears at the bottom of every stack.
   const orderedPoints = useMemo(() => {
@@ -73,8 +76,8 @@ export function ModelsSection(props: ModelsSectionProps) {
   }, [props.history])
 
   const totalTokens = useMemo(
-    () => props.rows.reduce((s, r) => s + r.total_tokens, 0),
-    [props.rows]
+    () => props.rows.reduce((s, r) => s + r.total_tokens, 0) * multiplier,
+    [props.rows, multiplier]
   )
 
   const spec = useMemo(() => {
@@ -100,7 +103,8 @@ export function ModelsSection(props: ModelsSectionProps) {
         {
           orient: 'left',
           label: {
-            formatMethod: (val: number | string) => formatTokens(Number(val)),
+            formatMethod: (val: number | string) =>
+              formatTokens(Number(val) * multiplier),
             style: { fill: chartTextColor, fontSize: 10 },
           },
           grid: {
@@ -116,7 +120,7 @@ export function ModelsSection(props: ModelsSectionProps) {
               key: (datum: Record<string, unknown>) =>
                 String(datum?.model ?? ''),
               value: (datum: Record<string, unknown>) =>
-                formatTokens(Number(datum?.tokens) || 0),
+                formatTokens((Number(datum?.tokens) || 0) * multiplier),
             },
           ],
         },
@@ -130,7 +134,7 @@ export function ModelsSection(props: ModelsSectionProps) {
               key: (datum: Record<string, unknown>) =>
                 String(datum?.model ?? ''),
               value: (datum: Record<string, unknown>) =>
-                Number(datum?.tokens) || 0,
+                (Number(datum?.tokens) || 0) * multiplier,
             },
           ],
           updateContent: (
@@ -161,7 +165,7 @@ export function ModelsSection(props: ModelsSectionProps) {
       },
       animationAppear: { duration: 500 },
     }
-  }, [chartGridColor, chartTextColor, orderedPoints, t])
+  }, [chartGridColor, chartTextColor, multiplier, orderedPoints, t])
 
   return (
     <section className='bg-card overflow-hidden rounded-lg border'>
@@ -223,7 +227,7 @@ export function ModelsSection(props: ModelsSectionProps) {
           </div>
         ) : (
           <div className='px-5 pt-1 pb-4'>
-            <ModelLeaderboard rows={props.rows} />
+            <ModelLeaderboard rows={props.rows} multiplier={multiplier} />
           </div>
         )}
       </div>

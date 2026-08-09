@@ -27,6 +27,8 @@ type RankingsResponse struct {
 	TopDroppers        []RankingMover     `json:"top_droppers"`
 	ModelsHistory      ModelHistorySeries `json:"models_history"`
 	VendorShareHistory VendorShareSeries  `json:"vendor_share_history"`
+	// DisplayMultiplier 排行榜展示倍率，仅由前端用于显示放大，不改变真实数据。
+	DisplayMultiplier float64 `json:"display_multiplier"`
 }
 
 type RankedModel struct {
