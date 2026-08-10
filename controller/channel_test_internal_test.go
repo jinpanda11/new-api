@@ -265,12 +265,19 @@ func TestBuildTestLogOtherInjectsTieredInfo(t *testing.T) {
 		},
 	}
 
+	requestRules := []billingexpr.RequestRuleTrace{{
+		Cond:       `param("service_tier") == "fast"`,
+		Multiplier: 2,
+		Matched:    true,
+	}}
 	other := buildTestLogOther(ctx, info, priceData, usage, &billingexpr.TieredResult{
-		MatchedTier: "base",
+		MatchedTier:  "base",
+		RequestRules: requestRules,
 	})
 
 	require.Equal(t, "tiered_expr", other["billing_mode"])
 	require.Equal(t, "base", other["matched_tier"])
+	require.Equal(t, requestRules, other["request_rules"])
 	require.NotEmpty(t, other["expr_b64"])
 }
 
@@ -347,6 +354,24 @@ func TestSelectChannelsForAutomaticTestScheduledRepresentativePicksOnePerGroup(t
 		ids = append(ids, ch.Id)
 	}
 	assert.ElementsMatch(t, []int{2, 4, 6, 7, 9}, ids)
+}
+
+func TestSelectChannelsForAutomaticTestAutoBanOnlyUsesEligibleChannels(t *testing.T) {
+	autoBanEnabled := 1
+	autoBanDisabled := 0
+	channels := []*model.Channel{
+		{Id: 1, Status: common.ChannelStatusEnabled, AutoBan: &autoBanEnabled},
+		{Id: 2, Status: common.ChannelStatusEnabled, AutoBan: &autoBanDisabled},
+		{Id: 3, Status: common.ChannelStatusAutoDisabled, AutoBan: &autoBanEnabled},
+		{Id: 4, Status: common.ChannelStatusManuallyDisabled, AutoBan: &autoBanEnabled},
+		{Id: 5, Status: common.ChannelStatusEnabled},
+	}
+
+	selected := selectChannelsForAutomaticTest(channels, operation_setting.ChannelTestModeAutoBanOnly)
+
+	require.Len(t, selected, 2)
+	require.Equal(t, 1, selected[0].Id)
+	require.Equal(t, 3, selected[1].Id)
 }
 
 func TestTestAllChannelsRejectsExistingActiveTask(t *testing.T) {

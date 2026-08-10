@@ -244,6 +244,7 @@ export type ModelSettings = {
   'monitor_setting.channel_test_mode':
     | 'scheduled_all'
     | 'scheduled_representative'
+    | 'auto_ban_only'
     | 'passive_recovery'
   'channel_affinity_setting.enabled': boolean
   'channel_affinity_setting.switch_on_success': boolean

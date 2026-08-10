@@ -66,6 +66,7 @@ const numericString = z.string().refine((value) => {
 const channelTestModes = [
   'scheduled_all',
   'scheduled_representative',
+  'auto_ban_only',
   'passive_recovery',
 ] as const
 type ChannelTestMode = (typeof channelTestModes)[number]
@@ -152,8 +153,13 @@ type NormalizedRoutingReliabilityValues = {
 }
 
 function normalizeChannelTestMode(value?: string): ChannelTestMode {
-  if (value === 'passive_recovery') return 'passive_recovery'
-  if (value === 'scheduled_representative') return 'scheduled_representative'
+  if (
+    value === 'scheduled_representative' ||
+    value === 'auto_ban_only' ||
+    value === 'passive_recovery'
+  ) {
+    return value
+  }
   return 'scheduled_all'
 }
 
@@ -256,6 +262,28 @@ export function RoutingReliabilitySection({
   const autoDisableStatusCodes = form.watch('AutomaticDisableStatusCodes')
   const autoRetryStatusCodes = form.watch('AutomaticRetryStatusCodes')
   const channelTestMode = form.watch('monitor_setting.channel_test_mode')
+  let channelTestModeDescription: string
+  switch (channelTestMode) {
+    case 'auto_ban_only':
+      channelTestModeDescription = t(
+        'Periodically checks only channels with auto-disable enabled, excluding manually disabled channels.'
+      )
+      break
+    case 'scheduled_representative':
+      channelTestModeDescription = t(
+        'Tests only one channel (highest priority, then weight, then lowest id) from each group to save upstream cost.'
+      )
+      break
+    case 'passive_recovery':
+      channelTestModeDescription = t(
+        'Does not check healthy channels. It only rechecks auto-disabled channels and restores them after they recover.'
+      )
+      break
+    default:
+      channelTestModeDescription = t(
+        'Periodically checks all channels except manually disabled ones to detect failures and recover channels automatically.'
+      )
+  }
   const autoDisableParsed = useMemo(
     () => parseHttpStatusCodeRules(autoDisableStatusCodes),
     [autoDisableStatusCodes]
@@ -397,7 +425,13 @@ export function RoutingReliabilitySection({
                       items={[
                         {
                           value: 'scheduled_all',
-                          label: t('Scheduled full test'),
+                          label: t('Actively check all channels'),
+                        },
+                        {
+                          value: 'auto_ban_only',
+                          label: t(
+                            'Actively check auto-disable-enabled channels'
+                          ),
                         },
                         {
                           value: 'scheduled_representative',
@@ -405,7 +439,7 @@ export function RoutingReliabilitySection({
                         },
                         {
                           value: 'passive_recovery',
-                          label: t('Passive recovery only'),
+                          label: t('Check channels awaiting recovery only'),
                         },
                       ]}
                       value={field.value}
@@ -419,21 +453,22 @@ export function RoutingReliabilitySection({
                       <SelectContent alignItemWithTrigger={false}>
                         <SelectGroup>
                           <SelectItem value='scheduled_all'>
-                            {t('Scheduled full test')}
+                            {t('Actively check all channels')}
+                          </SelectItem>
+                          <SelectItem value='auto_ban_only'>
+                            {t('Actively check auto-disable-enabled channels')}
                           </SelectItem>
                           <SelectItem value='scheduled_representative'>
                             {t('Scheduled representative per group')}
                           </SelectItem>
                           <SelectItem value='passive_recovery'>
-                            {t('Passive recovery only')}
+                            {t('Check channels awaiting recovery only')}
                           </SelectItem>
                         </SelectGroup>
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      {t(
-                        'Scheduled full test probes non-manually-disabled channels; representative-per-group tests only one channel (highest priority, then weight, then lowest id) from each group to save upstream cost; passive recovery only checks auto-disabled channels after real request failures.'
-                      )}
+                      {channelTestModeDescription}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
