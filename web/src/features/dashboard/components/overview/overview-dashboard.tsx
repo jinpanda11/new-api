@@ -49,6 +49,7 @@ import { Button } from '@/components/ui/button'
 import { IconBadge, type IconBadgeTone } from '@/components/ui/icon-badge'
 import { fetchTokenKey, getApiKeys } from '@/features/keys/api'
 import type { ApiKey } from '@/features/keys/types'
+import { useStatusCards } from '@/features/status/hooks/use-status-cards'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { getUserModels } from '@/lib/api'
 import { MOTION_TRANSITION } from '@/lib/motion'
@@ -64,6 +65,7 @@ import { AnnouncementsPanel } from './announcements-panel'
 import { ApiInfoPanel } from './api-info-panel'
 import { FAQPanel } from './faq-panel'
 import { PerformanceHealthPanel } from './performance-health-panel'
+import { ServiceStatusPanel } from './service-status-panel'
 import { SummaryCards } from './summary-cards'
 import { UptimePanel } from './uptime-panel'
 
@@ -492,6 +494,11 @@ export function OverviewDashboard() {
     staleTime: 5 * 60 * 1000,
   })
 
+  const statusCards = useStatusCards()
+  const showServiceStatusPanel =
+    statusCards.query.isLoading ||
+    (statusCards.enabled && statusCards.cards.length > 0)
+
   const preferredKey = useMemo(
     () => getPreferredKey(apiKeysQuery.data ?? []),
     [apiKeysQuery.data]
@@ -795,6 +802,17 @@ export function OverviewDashboard() {
               <UptimePanel />
             </CardStaggerItem>
           )}
+        </CardStaggerContainer>
+      )}
+
+      {showServiceStatusPanel && (
+        <CardStaggerContainer>
+          <CardStaggerItem>
+            <ServiceStatusPanel
+              loading={statusCards.query.isLoading}
+              cards={statusCards.cards}
+            />
+          </CardStaggerItem>
         </CardStaggerContainer>
       )}
     </div>

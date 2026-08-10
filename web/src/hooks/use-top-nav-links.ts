@@ -88,7 +88,7 @@ export function useTopNavLinks(): TopNavLink[] {
 
   // Service Status (requires login)
   links.push({
-    title: t('Service Status'),
+    title: t('Channel Monitoring'),
     href: '/status',
     requiresAuth: !isAuthed,
   })

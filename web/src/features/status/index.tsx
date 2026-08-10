@@ -16,62 +16,18 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
 import { PageTransition } from '@/components/page-transition'
 import { Skeleton } from '@/components/ui/skeleton'
 
-import { getStatusPageCards } from './api'
 import { GroupStatusCard } from './components/group-status-card'
-
-const MIN_REFRESH_SECONDS = 10
+import { useStatusCards } from './hooks/use-status-cards'
 
 export function StatusPage() {
   const { t } = useTranslation()
-  const [countdown, setCountdown] = useState<number>(60)
-
-  const query = useQuery({
-    queryKey: ['status-cards'],
-    queryFn: getStatusPageCards,
-    refetchOnWindowFocus: false,
-    staleTime: 5_000,
-  })
-
-  const refreshSeconds = Math.max(
-    MIN_REFRESH_SECONDS,
-    query.data?.refresh_seconds ?? 60
-  )
-
-  // 每次成功拉取后，重置倒计时到 refreshSeconds
-  useEffect(() => {
-    if (query.data) {
-      setCountdown(refreshSeconds)
-    }
-  }, [query.data, refreshSeconds])
-
-  // 倒计时 tick + 到点触发 refetch，页面隐藏时暂停
-  useEffect(() => {
-    const tick = () => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-        return
-      }
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          void query.refetch()
-          return refreshSeconds
-        }
-        return prev - 1
-      })
-    }
-    const id = window.setInterval(tick, 1000)
-    return () => window.clearInterval(id)
-  }, [query, refreshSeconds])
-
-  const enabled = query.data?.enabled ?? true
-  const cards = query.data?.cards ?? []
+  const { query, countdown, enabled, cards } = useStatusCards()
 
   return (
     <PublicLayout showMainContainer={false}>
