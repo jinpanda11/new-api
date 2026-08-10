@@ -337,6 +337,7 @@ export type BillingSettings = {
   WaffoPancakeMerchantID: string
   WaffoPancakePrivateKey: string
   WaffoPancakeReturnURL: string
+  WaffoPancakeEnabled: boolean
   // Bound by the operator through the catalog flow in the admin Pancake
   // section (saved via /api/option/waffo-pancake/save).
   WaffoPancakeStoreID: string

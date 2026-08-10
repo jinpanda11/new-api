@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 
 import { removeTrailingSlash } from './utils'
@@ -46,6 +47,7 @@ export type WaffoPancakeSettingsValues = {
   WaffoPancakeMerchantID: string
   WaffoPancakePrivateKey: string
   WaffoPancakeReturnURL: string
+  WaffoPancakeEnabled: boolean
 }
 
 export interface WaffoPancakeBinding {
@@ -383,6 +385,21 @@ export function WaffoPancakeSettingsSection({
           )}
         </p>
       </div>
+
+      {/* Enable / disable toggle */}
+      <div className='flex items-center gap-3'>
+        <Switch
+          id='waffo-pancake-enabled'
+          checked={values.WaffoPancakeEnabled}
+          onCheckedChange={(checked) =>
+            onValueChange('WaffoPancakeEnabled', checked)
+          }
+        />
+        <Label htmlFor='waffo-pancake-enabled'>
+          {t('Enable Waffo Pancake payment')}
+        </Label>
+      </div>
+
       <div className='grid min-w-0 gap-x-5 gap-y-4 lg:grid-cols-2'>
         {/* Blue box — webhook configuration only. */}
         <div className='rounded-md bg-blue-50 p-4 text-sm text-blue-900 lg:col-span-2 dark:bg-blue-950 dark:text-blue-100'>
