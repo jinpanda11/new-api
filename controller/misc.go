@@ -73,6 +73,7 @@ func GetStatus(c *gin.Context) {
 		"turnstile_check":             common.TurnstileCheckEnabled,
 		"turnstile_site_key":          common.TurnstileSiteKey,
 		"docs_link":                   operation_setting.GetGeneralSetting().DocsLink,
+		"interface_language":          operation_setting.GetInterfaceLanguage(),
 		"quota_per_unit":              common.QuotaPerUnit,
 		// 兼容旧前端：保留 display_in_currency，同时提供新的 quota_display_type
 		"display_in_currency":           operation_setting.IsCurrencyDisplay(),
@@ -110,9 +111,9 @@ func GetStatus(c *gin.Context) {
 		"CustomPageTitle":     common.OptionMap["CustomPageTitle"],
 
 		// 画图工作台默认值
-		"ImagePlaygroundDefaultSize":   common.OptionMap["ImagePlaygroundDefaultSize"],
-		"ImagePlaygroundSizeOptions":   common.OptionMap["ImagePlaygroundSizeOptions"],
-		"ImagePlaygroundDefaultModel":  common.OptionMap["ImagePlaygroundDefaultModel"],
+		"ImagePlaygroundDefaultSize":  common.OptionMap["ImagePlaygroundDefaultSize"],
+		"ImagePlaygroundSizeOptions":  common.OptionMap["ImagePlaygroundSizeOptions"],
+		"ImagePlaygroundDefaultModel": common.OptionMap["ImagePlaygroundDefaultModel"],
 
 		"oidc_enabled":                system_setting.GetOIDCSettings().Enabled,
 		"oidc_client_id":              system_setting.GetOIDCSettings().ClientId,

@@ -154,6 +154,14 @@ func UpdateOption(c *gin.Context) {
 		}
 	}
 	switch option.Key {
+	case "general_setting.interface_language":
+		if !operation_setting.IsSupportedInterfaceLanguage(option.Value.(string)) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "不支持的界面语言",
+			})
+			return
+		}
 	case "GitHubOAuthEnabled":
 		if option.Value == "true" && common.GitHubClientId == "" {
 			c.JSON(http.StatusOK, gin.H{

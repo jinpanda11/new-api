@@ -2344,6 +2344,8 @@
     "Inter-group overrides": "Dérogations inter-groupes",
     "Inter-group ratio overrides": "Dérogations de ratio inter-groupes",
     "Interface Language": "Langue de l'interface",
+    "Default Interface Language": "Langue d'interface par défaut",
+    "Used for signed-out visitors and users without a saved language preference.": "Utilisée pour les visiteurs non connectés et les utilisateurs sans préférence de langue enregistrée.",
     "Internal Notes": "Notes internes",
     "Internal notes (not shown to users)": "Notes internes (non visibles par les utilisateurs)",
     "Internal Server Error!": "Erreur interne du serveur !",

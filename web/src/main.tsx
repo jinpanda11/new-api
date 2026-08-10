@@ -28,8 +28,13 @@ import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { toast } from 'sonner'
 
+import {
+  applyDefaultInterfaceLanguage,
+  applyUserInterfaceLanguage,
+} from '@/i18n/language-state'
 import { getStatus } from '@/lib/api'
 import { installBuildMetadata } from '@/lib/build-metadata'
+import { useAuthStore } from '@/stores/auth-store'
 import { applyFaviconToDom } from '@/lib/dom-utils'
 import '@/lib/dayjs'
 import { initializeFrontendCache } from '@/lib/frontend-cache'
@@ -108,66 +113,72 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Render the app
-const rootElement = document.querySelector<HTMLElement>('#root')
-if (!rootElement) {
-  throw new Error('Root element not found')
+function applySystemBranding(status: Record<string, unknown>): void {
+  if (typeof status.system_name === 'string' && status.system_name) {
+    document.title = status.system_name
+    document
+      .querySelector('meta[name="title"]')
+      ?.setAttribute('content', status.system_name)
+  }
+  if (typeof status.logo === 'string' && status.logo) {
+    applyFaviconToDom(status.logo)
+  }
 }
-// Set document.title and favicon from cached status, then refresh from network
-;(function initSystemBranding() {
+
+async function initializeInterfaceLanguage(): Promise<void> {
   try {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return
-    const apply = (name: string) => {
-      document.title = name
-      const metaTitle = document.querySelector(
-        'meta[name="title"]'
-      ) as HTMLMetaElement | null
-      if (metaTitle) metaTitle.setAttribute('content', name)
+    const cachedStatus = window.localStorage.getItem('status')
+    if (cachedStatus) {
+      applySystemBranding(JSON.parse(cachedStatus) as Record<string, unknown>)
     }
-    // Cache-first
-    try {
-      const saved = localStorage.getItem('status')
-      if (saved) {
-        const s = JSON.parse(saved)
-        if (s?.system_name) apply(s.system_name)
-        if (s?.logo) applyFaviconToDom(s.logo)
-      }
-    } catch {
-      /* empty */
-    }
-    // Background refresh
-    getStatus()
-      .then((s) => {
-        if (s?.system_name) {
-          apply(s.system_name as string)
-          try {
-            localStorage.setItem('status', JSON.stringify(s))
-          } catch {
-            /* empty */
-          }
-        }
-        if (s?.logo) applyFaviconToDom(s.logo as string)
-      })
-      .catch(() => {
-        /* empty */
-      })
   } catch {
     /* empty */
   }
-})()
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <FontProvider>
-            <DirectionProvider>
-              <RouterProvider router={router} />
-            </DirectionProvider>
-          </FontProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </StrictMode>
-  )
+
+  try {
+    const status = await getStatus()
+    applySystemBranding(status)
+    try {
+      window.localStorage.setItem('status', JSON.stringify(status))
+    } catch {
+      /* empty */
+    }
+    await applyDefaultInterfaceLanguage(
+      typeof status.interface_language === 'string'
+        ? status.interface_language
+        : undefined
+    )
+  } catch {
+    // Keep the English fallback when the public status endpoint is unavailable.
+  }
+
+  await applyUserInterfaceLanguage(useAuthStore.getState().auth.user)
 }
+
+async function renderApp(): Promise<void> {
+  await initializeInterfaceLanguage()
+
+  const rootElement = document.querySelector<HTMLElement>('#root')
+  if (!rootElement) {
+    throw new Error('Root element not found')
+  }
+
+  if (!rootElement.innerHTML) {
+    const root = ReactDOM.createRoot(rootElement)
+    root.render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <FontProvider>
+              <DirectionProvider>
+                <RouterProvider router={router} />
+              </DirectionProvider>
+            </FontProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </StrictMode>
+    )
+  }
+}
+
+void renderApp()

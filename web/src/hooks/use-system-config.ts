@@ -19,7 +19,10 @@ For commercial licensing, please contact support@quantumnous.com
 import { useEffect, useCallback } from 'react'
 
 import { DEFAULT_SYSTEM_NAME, DEFAULT_LOGO } from '@/lib/constants'
+import { applyUserInterfaceLanguage } from '@/i18n/language-state'
+import { normalizeInterfaceLanguage } from '@/i18n/languages'
 import { applyFaviconToDom } from '@/lib/dom-utils'
+import { useAuthStore } from '@/stores/auth-store'
 import {
   useSystemConfigStore,
   type CurrencyConfig,
@@ -47,6 +50,7 @@ interface StatusApiResponse {
     usd_exchange_rate?: number
     custom_currency_symbol?: string
     custom_currency_exchange_rate?: number
+    interface_language?: string
   }
 }
 
@@ -96,6 +100,7 @@ export function mapStatusDataToConfig(
     systemName: data.system_name || DEFAULT_SYSTEM_NAME,
     logo: data.logo || DEFAULT_LOGO,
     footerHtml: data.footer_html,
+    interfaceLanguage: normalizeInterfaceLanguage(data.interface_language),
     demoSiteEnabled: data.demo_site_enabled,
     displayTokenStatEnabled: data.display_token_stat_enabled,
     currency,
@@ -158,6 +163,7 @@ export function useSystemConfig(options: UseSystemConfigOptions = {}) {
       setLoading(true)
       const newConfig = await fetchSystemConfig()
       setConfig(newConfig)
+      await applyUserInterfaceLanguage(useAuthStore.getState().auth.user)
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to load system config:', error)

@@ -2344,6 +2344,8 @@
     "Inter-group overrides": "分组间覆盖",
     "Inter-group ratio overrides": "分组间比例覆盖",
     "Interface Language": "界面语言",
+    "Default Interface Language": "默认界面语言",
+    "Used for signed-out visitors and users without a saved language preference.": "用于未登录访客和未保存语言偏好的用户。",
     "Internal Notes": "内部备注",
     "Internal notes (not shown to users)": "内部备注（不显示给用户）",
     "Internal Server Error!": "内部服务器错误！",

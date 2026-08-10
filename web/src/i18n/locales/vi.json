@@ -2344,6 +2344,8 @@
     "Inter-group overrides": "Ghi đè liên nhóm",
     "Inter-group ratio overrides": "Tỷ lệ liên nhóm ghi đè",
     "Interface Language": "Ngôn ngữ giao diện",
+    "Default Interface Language": "Ngôn ngữ giao diện mặc định",
+    "Used for signed-out visitors and users without a saved language preference.": "Dùng cho khách chưa đăng nhập và người dùng chưa lưu tùy chọn ngôn ngữ.",
     "Internal Notes": "Ghi chú nội bộ",
     "Internal notes (not shown to users)": "Ghi chú nội bộ (không hiển thị cho người dùng)",
     "Internal Server Error!": "Lỗi máy chủ nội bộ!",

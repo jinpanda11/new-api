@@ -28,6 +28,7 @@ import { ImagePlaygroundDefaultsSection } from '../maintenance/image-playground-
 import { NoticeSection } from '../maintenance/notice-section'
 import { SidebarModulesSection } from '../maintenance/sidebar-modules-section'
 import { CustomPageSection } from '../content/custom-page-section'
+import { InterfaceLanguageSection } from './interface-language-section'
 import type { SiteSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
 
@@ -57,6 +58,15 @@ const SITE_SECTIONS = [
     titleKey: 'System Notice',
     build: (settings: SiteSettings) => (
       <NoticeSection defaultValue={settings.Notice ?? ''} />
+    ),
+  },
+  {
+    id: 'interface-language',
+    titleKey: 'Interface Language',
+    build: (settings: SiteSettings) => (
+      <InterfaceLanguageSection
+        defaultLanguage={settings['general_setting.interface_language']}
+      />
     ),
   },
   {

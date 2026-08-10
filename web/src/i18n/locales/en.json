@@ -2344,6 +2344,8 @@
     "Inter-group overrides": "Inter-group overrides",
     "Inter-group ratio overrides": "Inter-group ratio overrides",
     "Interface Language": "Interface Language",
+    "Default Interface Language": "Default Interface Language",
+    "Used for signed-out visitors and users without a saved language preference.": "Used for signed-out visitors and users without a saved language preference.",
     "Internal Notes": "Internal Notes",
     "Internal notes (not shown to users)": "Internal notes (not shown to users)",
     "Internal Server Error!": "Internal Server Error!",

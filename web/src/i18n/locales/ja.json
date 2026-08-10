@@ -2344,6 +2344,8 @@
     "Inter-group overrides": "グループ間上書き",
     "Inter-group ratio overrides": "グループ間比率上書き",
     "Interface Language": "インターフェース言語",
+    "Default Interface Language": "デフォルトのインターフェース言語",
+    "Used for signed-out visitors and users without a saved language preference.": "サインアウト中の訪問者と、保存済みの言語設定がないユーザーに使用されます。",
     "Internal Notes": "内部メモ",
     "Internal notes (not shown to users)": ":内部メモ（ユーザーには表示されません）",
     "Internal Server Error!": "内部サーバーエラー！",

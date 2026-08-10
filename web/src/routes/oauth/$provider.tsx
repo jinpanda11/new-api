@@ -28,6 +28,7 @@ import { useEffect } from 'react'
 import { toast } from 'sonner'
 
 import { OAuthCallbackScreen } from '@/features/auth/components/oauth-callback-screen'
+import { applyUserInterfaceLanguage } from '@/i18n/language-state'
 import {
   OAUTH_BIND_CALLBACK_MESSAGE,
   OAUTH_BIND_RESULT_MESSAGE,
@@ -200,6 +201,7 @@ function OAuthCallback() {
         const response = await api.get(`/api/oauth/${provider}`, config)
         if (response.data?.success && isAuthBundle(response.data?.data)) {
           applyAuthBundle(response.data.data)
+          await applyUserInterfaceLanguage(response.data.data.user)
           safeNavigate(search.redirect)
           toast.success(i18next.t('Signed in successfully!'))
           return

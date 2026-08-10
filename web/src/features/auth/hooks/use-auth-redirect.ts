@@ -17,12 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useNavigate } from '@tanstack/react-router'
-import i18n from 'i18next'
-
-import {
-  getSavedLanguage,
-  sanitizeAuthRedirect,
-} from '@/features/auth/lib/auth-redirect'
+import { applyUserInterfaceLanguage } from '@/i18n/language-state'
+import { sanitizeAuthRedirect } from '@/features/auth/lib/auth-redirect'
 import { applyAuthBundle } from '@/lib/api'
 import type { AuthBundle } from '@/stores/auth-store'
 
@@ -42,10 +38,7 @@ export function useAuthRedirect() {
     redirectTo?: string
   ) => {
     applyAuthBundle(bundle)
-    const savedLang = getSavedLanguage(bundle.user)
-    if (savedLang && savedLang !== i18n.language) {
-      await i18n.changeLanguage(savedLang)
-    }
+    await applyUserInterfaceLanguage(bundle.user)
 
     const targetPath =
       sanitizeAuthRedirect(redirectTo, window.location.origin) ?? '/dashboard'

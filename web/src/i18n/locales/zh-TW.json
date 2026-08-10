@@ -2344,6 +2344,8 @@
     "Inter-group overrides": "分組間覆蓋",
     "Inter-group ratio overrides": "分組間比例覆蓋",
     "Interface Language": "介面語言",
+    "Default Interface Language": "預設介面語言",
+    "Used for signed-out visitors and users without a saved language preference.": "用於未登入訪客及未儲存語言偏好的使用者。",
     "Internal Notes": "內部備註",
     "Internal notes (not shown to users)": "內部備註（不顯示給用戶）",
     "Internal Server Error!": "內部伺服器錯誤！",

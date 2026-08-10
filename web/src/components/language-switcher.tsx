@@ -53,6 +53,8 @@ export function LanguageSwitcher() {
     [i18n, user]
   )
 
+  if (!user) return null
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger

@@ -21,6 +21,8 @@ import i18next from 'i18next'
 import { useEffect } from 'react'
 import { toast } from 'sonner'
 
+import { applyUserInterfaceLanguage } from '@/i18n/language-state'
+
 import { wechatLoginByCode } from '@/features/auth/api'
 import { sanitizeAuthRedirect } from '@/features/auth/lib/auth-redirect'
 import { applyAuthBundle, isAuthBundle } from '@/lib/api'
@@ -42,6 +44,7 @@ function OAuthComponent() {
           const res = await wechatLoginByCode(search.code)
           if (res?.success && isAuthBundle(res.data)) {
             applyAuthBundle(res.data)
+            await applyUserInterfaceLanguage(res.data.user)
             const target =
               sanitizeAuthRedirect(search?.redirect, window.location.origin) ??
               '/dashboard'

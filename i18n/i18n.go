@@ -13,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/relaykit/dto"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 )
 
 const (
@@ -121,15 +122,11 @@ func SetUserLangLoader(loader func(userId int) string) {
 	userLangLoaderFunc = loader
 }
 
-// GetLangFromContext extracts the language setting from gin context
-// It checks multiple sources in priority order:
-// 1. User settings (ContextKeyUserSetting) - if already loaded (e.g., by TokenAuth)
-// 2. Lazy load user language from cache/DB using user ID
-// 3. Language set by middleware (ContextKeyLanguage) - from Accept-Language header
-// 4. Default language (English)
+// GetLangFromContext extracts the language setting from gin context.
+// User preferences override the site-wide default language.
 func GetLangFromContext(c *gin.Context) string {
 	if c == nil {
-		return DefaultLang
+		return normalizeLang(operation_setting.GetInterfaceLanguage())
 	}
 
 	// 1. Try to get language from user settings (if already loaded by TokenAuth or other middleware)
@@ -157,23 +154,7 @@ func GetLangFromContext(c *gin.Context) string {
 		}
 	}
 
-	// 3. Try to get language from context (set by I18n middleware from Accept-Language)
-	if lang := c.GetString(string(constant.ContextKeyLanguage)); lang != "" {
-		normalized := normalizeLang(lang)
-		if IsSupported(normalized) {
-			return normalized
-		}
-	}
-
-	// 4. Try Accept-Language header directly (fallback if middleware didn't run)
-	if acceptLang := c.GetHeader("Accept-Language"); acceptLang != "" {
-		lang := ParseAcceptLanguage(acceptLang)
-		if IsSupported(lang) {
-			return lang
-		}
-	}
-
-	return DefaultLang
+	return normalizeLang(operation_setting.GetInterfaceLanguage())
 }
 
 // ParseAcceptLanguage parses the Accept-Language header and returns the preferred language
@@ -203,6 +184,10 @@ func normalizeLang(lang string) string {
 
 	// Handle common variations
 	switch {
+	case lang == "zhtw":
+		return LangZhTW
+	case lang == "zhcn":
+		return LangZhCN
 	case strings.HasPrefix(lang, "zh-tw"):
 		return LangZhTW
 	case strings.HasPrefix(lang, "zh"):

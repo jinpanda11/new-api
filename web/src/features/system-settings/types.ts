@@ -123,6 +123,7 @@ export type SiteSettings = {
   ImagePlaygroundDefaultSize: string
   ImagePlaygroundSizeOptions: string
   ImagePlaygroundDefaultModel: string
+  'general_setting.interface_language': 'zhCN' | 'en' | 'fr' | 'ru' | 'ja' | 'vi' | 'zhTW'
 }
 
 export type AuthSettings = {

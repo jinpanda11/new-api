@@ -8,6 +8,14 @@ const (
 	QuotaDisplayTypeCNY    = "CNY"
 	QuotaDisplayTypeTokens = "TOKENS"
 	QuotaDisplayTypeCustom = "CUSTOM"
+
+	InterfaceLanguageZhCN = "zhCN"
+	InterfaceLanguageEn   = "en"
+	InterfaceLanguageFr   = "fr"
+	InterfaceLanguageRu   = "ru"
+	InterfaceLanguageJa   = "ja"
+	InterfaceLanguageVi   = "vi"
+	InterfaceLanguageZhTW = "zhTW"
 )
 
 type GeneralSetting struct {
@@ -20,6 +28,8 @@ type GeneralSetting struct {
 	CustomCurrencySymbol string `json:"custom_currency_symbol"`
 	// 自定义货币与美元汇率（1 USD = X Custom）
 	CustomCurrencyExchangeRate float64 `json:"custom_currency_exchange_rate"`
+	// 网站默认界面语言，用户可以在个人设置中覆盖此项。
+	InterfaceLanguage string `json:"interface_language"`
 }
 
 // 默认配置
@@ -30,6 +40,7 @@ var generalSetting = GeneralSetting{
 	QuotaDisplayType:           QuotaDisplayTypeUSD,
 	CustomCurrencySymbol:       "¤",
 	CustomCurrencyExchangeRate: 1.0,
+	InterfaceLanguage:          InterfaceLanguageEn,
 }
 
 func init() {
@@ -39,6 +50,23 @@ func init() {
 
 func GetGeneralSetting() *GeneralSetting {
 	return &generalSetting
+}
+
+func IsSupportedInterfaceLanguage(language string) bool {
+	switch language {
+	case InterfaceLanguageZhCN, InterfaceLanguageEn, InterfaceLanguageFr,
+		InterfaceLanguageRu, InterfaceLanguageJa, InterfaceLanguageVi, InterfaceLanguageZhTW:
+		return true
+	default:
+		return false
+	}
+}
+
+func GetInterfaceLanguage() string {
+	if IsSupportedInterfaceLanguage(generalSetting.InterfaceLanguage) {
+		return generalSetting.InterfaceLanguage
+	}
+	return InterfaceLanguageEn
 }
 
 // IsCurrencyDisplay 是否以货币形式展示（美元或人民币）
