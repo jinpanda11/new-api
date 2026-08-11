@@ -72,16 +72,26 @@ export function TableEmpty({
   return (
     <TableRow>
       <TableCell colSpan={colSpan} className='h-[400px] p-0'>
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant='icon'>
-              {icon || <Database className='size-6' />}
-            </EmptyMedia>
-            <EmptyTitle>{resolvedTitle}</EmptyTitle>
-            <EmptyDescription>{resolvedDescription}</EmptyDescription>
-          </EmptyHeader>
-          {children}
-        </Empty>
+        <div className='relative flex h-full w-full items-center justify-center'>
+          {/* Oversized decorative outline word behind the empty state
+           * (invisible outside the neon-glass preset). */}
+          <span
+            aria-hidden
+            className='neon-outline-text pointer-events-none absolute text-[clamp(3rem,8vw,7rem)] whitespace-nowrap'
+          >
+            No Signal
+          </span>
+          <Empty className='relative'>
+            <EmptyHeader>
+              <EmptyMedia variant='icon'>
+                {icon || <Database className='size-6' />}
+              </EmptyMedia>
+              <EmptyTitle>{resolvedTitle}</EmptyTitle>
+              <EmptyDescription>{resolvedDescription}</EmptyDescription>
+            </EmptyHeader>
+            {children}
+          </Empty>
+        </div>
       </TableCell>
     </TableRow>
   )

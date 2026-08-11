@@ -1,0 +1,866 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+/*
+ * Neon Glass — stage, glow fields, and the G0–G3 glass material system.
+ *
+ * Everything here is scoped to the `neon-glass` theme preset via the
+ * `data-theme-preset` attribute on <body> (attribute selectors) or driven
+ * by tokens defined in theme.css / theme-presets.css. Non-neon presets are
+ * untouched.
+ *
+ * Degradation:
+ *   - `@supports not (backdrop-filter)` → near-opaque surfaces.
+ *   - `prefers-reduced-motion` → every animation is disabled.
+ *   - ≤767px → lower blur radii, no drifting blobs.
+ *
+ * Tokens consumed (see theme.css for base values, theme-presets.css for
+ * the neon-glass overrides): --glass-g0..g3-bg, --glass-blur-g0..g3,
+ * --glass-border, --glass-highlight, --glass-shadow, --neon-vignette,
+ * --neon-pink/-lime/-yellow/-cyan/-red (+ *-soft), --neon-text,
+ * --neon-text-muted.
+ */
+
+/* ── Stage ────────────────────────────────────────────────────────────────
+ * Full-viewport fixed background layer (mounted once at the app root):
+ * hairline grid + wide pink/lime/cyan glow fields + vignette. Hidden
+ * unless the neon-glass preset is active. */
+.neon-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    /* T.RICKS-style orbs entering from the bottom-right: a huge violet
+     * orb (#5C31FF) with a smaller pink orb (#F88CD4) nested inside. */
+    radial-gradient(
+      ellipse 92% 84% at 102% 104%,
+      var(--neon-violet-glow) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 64% 58% at 100% 102%,
+      var(--neon-pink-glow) 0%,
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 40% 30% at 12% 6%,
+      var(--neon-pink-soft),
+      transparent 70%
+    );
+  background-size: 48px 48px, 48px 48px, auto, auto, auto, auto;
+}
+
+[data-theme-preset='neon-glass'] .neon-stage {
+  opacity: 1;
+}
+
+.neon-stage::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: radial-gradient(
+    circle at center,
+    transparent 48%,
+    var(--neon-vignette) 100%
+  );
+}
+
+/* Slow-drifting glow blobs — transform-only animation, at most three per
+ * viewport (perf budget). Disabled on mobile and reduced-motion. */
+.neon-stage-blob {
+  position: absolute;
+  border-radius: 9999px;
+  opacity: 0.9;
+  will-change: transform;
+}
+.neon-stage-blob--violet {
+  /* Large violet orb drifting in from the bottom-right (T.RICKS style). */
+  right: -22%;
+  bottom: -26%;
+  width: 56vw;
+  height: 56vw;
+  background: radial-gradient(circle, var(--neon-violet-glow), transparent 70%);
+  animation: neon-stage-drift-a 16s ease-in-out infinite alternate;
+}
+.neon-stage-blob--pink {
+  /* Smaller pink orb nested inside the violet one. */
+  right: -8%;
+  bottom: -14%;
+  width: 34vw;
+  height: 34vw;
+  background: radial-gradient(circle, var(--neon-pink-glow), transparent 70%);
+  animation: neon-stage-drift-b 19s ease-in-out infinite alternate;
+}
+.neon-stage-blob--soft {
+  /* Weak violet counter-glow at the top-left for balance. */
+  top: -18%;
+  left: -12%;
+  width: 40vw;
+  height: 40vw;
+  background: radial-gradient(
+    circle,
+    var(--neon-violet-soft),
+    transparent 72%
+  );
+  animation: neon-stage-drift-c 22s ease-in-out infinite alternate;
+}
+
+@keyframes neon-stage-drift-a {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(6vw, 4vh, 0) scale(1.08);
+  }
+}
+@keyframes neon-stage-drift-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  to {
+    transform: translate3d(-5vw, 6vh, 0) scale(0.96);
+  }
+}
+@keyframes neon-stage-drift-c {
+  from {
+    transform: translate3d(0, 0, 0) scale(0.98);
+  }
+  to {
+    transform: translate3d(4vw, -5vh, 0) scale(1.06);
+  }
+}
+
+/* ── G0–G3 glass surfaces ─────────────────────────────────────────────────
+ * G0 Clear Glass (tables, large content) — most opaque.
+ * G1 Soft Glass  (cards, sidebar).
+ * G2 Glow Glass  (metrics, forms, toolbars).
+ * G3 Hero Glass  (hero, login, balance, dialogs) — most transparent.
+ *
+ * `isolation: isolate` lets the diagonal highlight (::before, z-index -1)
+ * sit above the surface background but below the content. */
+.glass-g0,
+.glass-g1,
+.glass-g2,
+.glass-g3 {
+  position: relative;
+  isolation: isolate;
+  background: var(--glass-g0-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 oklch(1 0 0 / 0.04),
+    var(--glass-shadow);
+  -webkit-backdrop-filter: blur(var(--glass-blur-g0)) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-g0)) saturate(145%);
+}
+.glass-g1 {
+  background: var(--glass-g1-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur-g1)) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-g1)) saturate(145%);
+}
+.glass-g2 {
+  background: var(--glass-g2-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur-g2)) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-g2)) saturate(145%);
+}
+.glass-g3 {
+  background: var(--glass-g3-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur-g3)) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-g3)) saturate(145%);
+}
+
+.glass-g0::before,
+.glass-g1::before,
+.glass-g2::before,
+.glass-g3::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(
+    118deg,
+    rgba(255, 255, 255, 0.14),
+    transparent 24%,
+    transparent 72%,
+    rgba(255, 255, 255, 0.05)
+  );
+}
+
+/* Keep the glass composition when the global card hover micro-interaction
+ * replaces the box-shadow (the generic rule in index.css would otherwise
+ * drop the inner highlights and the deep glass drop shadow). */
+body [data-theme-preset='neon-glass']
+  [data-slot='card']:is(.glass-g0, .glass-g1, .glass-g2, .glass-g3):hover {
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 oklch(1 0 0 / 0.04),
+    var(--glass-shadow),
+    0 4px 16px rgb(0 0 0 / 0.2);
+}
+
+/* ── Neon border ──────────────────────────────────────────────────────────
+ * Gradient border (pink → white → lime) for selected models/channels,
+ * balance cards, login forms and active filter panels. The interior keeps
+ * the glass fill via --neon-border-fill (defaults to the G1 surface).
+ * Outside the neon-glass preset it degrades to a plain hairline border. */
+.neon-border {
+  border: 1px solid var(--glass-border);
+}
+[data-theme-preset='neon-glass'] .neon-border {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(
+        var(--neon-border-fill, var(--glass-g1-bg)),
+        var(--neon-border-fill, var(--glass-g1-bg))
+      )
+      padding-box,
+    linear-gradient(
+        120deg,
+        var(--neon-pink),
+        rgba(255, 255, 255, 0.2) 46%,
+        var(--neon-lime)
+      )
+      border-box;
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 oklch(1 0 0 / 0.04),
+    var(--glass-shadow);
+}
+
+/* ── Hover shine sweep (single pass, interactive cards only) ────────────
+ * The sweep layer is invisible outside the neon-glass preset. */
+.glass-shine {
+  position: relative;
+  overflow: hidden;
+}
+.glass-shine::after {
+  position: absolute;
+  top: -40%;
+  left: -55%;
+  width: 34%;
+  height: 180%;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    transparent
+  );
+  transform: rotate(16deg);
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-theme-preset='neon-glass'] .glass-shine::after {
+    opacity: 1;
+    transition: left 520ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  [data-theme-preset='neon-glass'] .glass-shine:hover::after {
+    left: 125%;
+  }
+}
+
+/* ── Motion variants for cards ─────────────────────────────────────────── */
+.card-motion-lift {
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  body [data-theme-preset='neon-glass'] .card-motion-lift:hover {
+    transform: translateY(-4px);
+  }
+}
+
+.neon-pulse {
+  /* No animation outside the neon-glass preset. */
+  animation: none;
+}
+[data-theme-preset='neon-glass'] .neon-pulse {
+  animation: neon-glow-pulse 2.4s ease-in-out infinite;
+}
+@keyframes neon-glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 var(--glass-highlight),
+      0 0 18px var(--neon-pink-soft);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 var(--glass-highlight),
+      0 0 30px var(--neon-pink-soft);
+  }
+}
+
+/* ── Status dots & signal lines ────────────────────────────────────────── */
+.neon-status-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--neon-lime);
+  box-shadow: 0 0 10px var(--neon-lime-soft);
+}
+.neon-status-dot--yellow {
+  background: var(--neon-yellow);
+  box-shadow: 0 0 10px var(--neon-yellow-soft);
+}
+.neon-status-dot--cyan {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan-soft);
+}
+.neon-status-dot--red {
+  background: var(--neon-red);
+  box-shadow: 0 0 10px var(--neon-red-soft);
+}
+.neon-status-dot--cyan {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan-soft);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .neon-status-dot--breath {
+    animation: neon-breathe 2.2s ease-in-out infinite;
+  }
+  .neon-status-dot--pulse {
+    animation: neon-error-pulse 1.6s ease-in-out infinite;
+  }
+}
+@keyframes neon-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+@keyframes neon-error-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Left-edge signal line for table rows / list items (status-coded). */
+.neon-signal-line {
+  position: relative;
+}
+.neon-signal-line::before {
+  position: absolute;
+  inset-block: 18%;
+  inset-inline-start: 0;
+  width: 2px;
+  border-radius: 9999px;
+  content: '';
+  background: var(--neon-lime);
+  box-shadow: 0 0 8px var(--neon-lime-soft);
+}
+.neon-signal-line--pink::before {
+  background: var(--neon-pink);
+  box-shadow: 0 0 8px var(--neon-pink-soft);
+}
+.neon-signal-line--yellow::before {
+  background: var(--neon-yellow);
+  box-shadow: 0 0 8px var(--neon-yellow-soft);
+}
+.neon-signal-line--red::before {
+  background: var(--neon-red);
+  box-shadow: 0 0 8px var(--neon-red-soft);
+}
+
+/* ── Decorative outline text & scanlines ───────────────────────────────── */
+.neon-outline-text {
+  pointer-events: none;
+  user-select: none;
+  color: transparent;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  /* Invisible outside the neon-glass preset — decorative text must never
+   * leak ink into other themes. */
+  -webkit-text-stroke: 1px transparent;
+}
+[data-theme-preset='neon-glass'] .neon-outline-text {
+  -webkit-text-stroke-color: var(--neon-text-muted);
+}
+.neon-outline-text--pink {
+  -webkit-text-stroke: 1px var(--neon-pink-soft);
+}
+.neon-outline-text--lime {
+  -webkit-text-stroke: 1px var(--neon-lime-soft);
+}
+
+.neon-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    oklch(1 0 0 / 0.028) 0,
+    oklch(1 0 0 / 0.028) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* ── Brand pulse (header brand signal light) ───────────────────────────── */
+.neon-brand-pulse {
+  display: none;
+  width: 0.375rem;
+  height: 0.375rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--neon-lime);
+  box-shadow: 0 0 8px var(--neon-lime-soft);
+}
+[data-theme-preset='neon-glass'] .neon-brand-pulse {
+  display: inline-block;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-theme-preset='neon-glass'] .neon-brand-pulse {
+    animation: neon-breathe 2.2s ease-in-out infinite;
+  }
+}
+
+/* ── App shell overrides (neon-glass preset only) ─────────────────────────
+ * Header: G2 glass + a hairline pink→lime light strip at the bottom. */
+[data-theme-preset='neon-glass'] [data-slot='app-header'] {
+  background: var(--glass-g2-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur-g2)) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-g2)) saturate(145%);
+}
+[data-theme-preset='neon-glass'] [data-slot='app-header']::after {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  content: '';
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--neon-pink) 30%,
+    var(--neon-lime) 70%,
+    transparent
+  );
+  opacity: 0.7;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-theme-preset='neon-glass'] [data-slot='app-header']::after {
+    background-size: 200% 100%;
+    animation: neon-header-flow 9s linear infinite;
+  }
+}
+@keyframes neon-header-flow {
+  from {
+    background-position: 0% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Sidebar: G1 glass; active nav item gets a glowing pink left line. */
+[data-theme-preset='neon-glass'] [data-slot='sidebar'] {
+  -webkit-backdrop-filter: blur(var(--glass-blur-g1)) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-g1)) saturate(145%);
+}
+[data-theme-preset='neon-glass']
+  [data-slot='sidebar-menu-button'][data-active] {
+  position: relative;
+}
+[data-theme-preset='neon-glass']
+  [data-slot='sidebar-menu-button'][data-active]::before {
+  position: absolute;
+  inset-block: 22%;
+  inset-inline-start: 0;
+  width: 2px;
+  border-radius: 9999px;
+  content: '';
+  background: var(--neon-pink);
+  box-shadow: 0 0 10px var(--neon-pink-soft);
+}
+
+/* Admin nav zone: faint red-pink glow pool under the group (marked via
+ * `data-neon-zone='admin'` on the SidebarGroup in nav-group.tsx). */
+[data-theme-preset='neon-glass']
+  [data-slot='sidebar-group'][data-neon-zone='admin'] {
+  position: relative;
+}
+[data-theme-preset='neon-glass']
+  [data-slot='sidebar-group'][data-neon-zone='admin']::after {
+  position: absolute;
+  right: 0;
+  bottom: -8px;
+  left: 0;
+  height: 48px;
+  pointer-events: none;
+  content: '';
+  background: radial-gradient(
+    ellipse 70% 100% at 50% 100%,
+    var(--neon-red-soft),
+    transparent 72%
+  );
+}
+
+/* Content canvas: the inset is transparent so the stage shows through. */
+[data-theme-preset='neon-glass'] [data-slot='sidebar-inset'] {
+  background-color: transparent;
+}
+
+/* Page titles: uppercase, wide tracking — the experimental console voice.
+ * CJK titles are unaffected by `uppercase` but still gain the tracking. */
+[data-theme-preset='neon-glass'] [data-slot='section-page-title'] {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Surfaces: dialogs, sheets, popovers, tooltips ────────────────────────
+ * G3 glass. The ring-* utilities keep their own composition via
+ * --tw-ring-shadow, so the deep glass drop shadow layers under it. */
+[data-theme-preset='neon-glass'] [data-slot='dialog-content'],
+[data-theme-preset='neon-glass'] [data-slot='popover-content'],
+[data-theme-preset='neon-glass'] [data-slot='sheet-content'] {
+  background-color: var(--glass-g3-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur-g3)) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-g3)) saturate(145%);
+  box-shadow: var(--tw-ring-shadow), var(--glass-shadow);
+}
+
+/* Tooltips: G3 glass with clear light text (inverted vs. the default
+ * foreground-background swap). */
+[data-theme-preset='neon-glass'] [data-slot='tooltip-content'] {
+  background-color: var(--glass-g3-bg);
+  color: var(--neon-text);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(var(--glass-blur-g3)) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-g3)) saturate(145%);
+}
+[data-theme-preset='neon-glass'] [data-slot='tooltip-arrow'] {
+  background: var(--glass-g3-bg);
+  fill: var(--glass-g3-bg);
+}
+
+/* ── Controls ─────────────────────────────────────────────────────────────
+ * Inputs: pink border + pink inset ring, with a soft cyan inner glow on
+ * focus (the two-tone neon focus). */
+[data-theme-preset='neon-glass'] [data-slot='input']:focus-visible {
+  border-color: var(--neon-pink);
+  box-shadow: var(--tw-ring-shadow), inset 0 0 12px var(--neon-cyan-soft);
+}
+
+/* Tabs: active trigger gets a pink glow (pill) / glowing pink underline
+ * (line variant). */
+[data-theme-preset='neon-glass'] [data-slot='tabs-trigger'][data-active] {
+  box-shadow: var(--tw-ring-shadow), 0 0 0 1px var(--neon-pink-soft),
+    0 0 14px var(--neon-pink-soft);
+}
+[data-theme-preset='neon-glass']
+  [data-slot='tabs-trigger'][data-active]::after {
+  background: var(--neon-pink);
+  box-shadow: 0 0 8px var(--neon-pink-soft);
+}
+
+/* Switch: checked track turns acid lime with a soft glow. */
+[data-theme-preset='neon-glass'] [data-slot='switch'][data-checked] {
+  background-color: var(--neon-lime);
+  box-shadow: 0 0 10px var(--neon-lime-soft);
+}
+
+/* ── Hero stage (public home) ─────────────────────────────────────────────
+ * Oversized brand title with wide tracking; only the neon-glass preset
+ * gets the full display scale (documented: clamp(64px, 9vw, 144px)). */
+[data-theme-preset='neon-glass'] .neon-hero-title {
+  font-size: clamp(3.25rem, 8vw, 6.5rem);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.05;
+  text-transform: uppercase;
+  background: linear-gradient(
+    92deg,
+    var(--neon-pink) 0%,
+    var(--neon-yellow) 48%,
+    var(--neon-cyan) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@media (max-width: 767px) {
+  [data-theme-preset='neon-glass'] .neon-hero-title {
+    font-size: clamp(2.5rem, 11vw, 3.5rem);
+    letter-spacing: 0.06em;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-theme-preset='neon-glass'] .neon-hero-title {
+    background-size: 200% 100%;
+    animation: neon-hero-shimmer 9s ease-in-out infinite;
+  }
+}
+@keyframes neon-hero-shimmer {
+  0%,
+  100% {
+    background-position: 0% 0;
+  }
+  50% {
+    background-position: 100% 0;
+  }
+}
+
+/* Hero subtitle gradient: the default blue/violet/purple stays for other
+ * presets; the neon-glass preset swaps in the pink→yellow→cyan sweep. */
+[data-theme-preset='neon-glass'] .neon-subtitle-gradient {
+  background-image: linear-gradient(
+    92deg,
+    var(--neon-pink),
+    var(--neon-yellow),
+    var(--neon-cyan)
+  );
+}
+
+/* Oversized outline text behind the hero terminal. */
+[data-theme-preset='neon-glass'] .neon-hero-outline {
+  position: absolute;
+  z-index: -1;
+  font-size: clamp(8rem, 24vw, 22rem);
+  font-weight: 900;
+  white-space: nowrap;
+}
+.neon-hero-outline--a {
+  top: 6%;
+  left: -4%;
+}
+.neon-hero-outline--b {
+  right: -6%;
+  bottom: 4%;
+}
+
+/* Public header: when scrolled, the floating nav becomes G3 hero glass
+ * with a neon hairline ring + top inner highlight. */
+[data-theme-preset='neon-glass'] .neon-nav-scrolled {
+  background: var(--glass-g3-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    var(--glass-shadow);
+  -webkit-backdrop-filter: blur(var(--glass-blur-g3)) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-g3)) saturate(145%);
+}
+
+/* ── Workflow section: connector lines + travelling light dot ─────────── */
+/* Visible only under the neon-glass preset (the flow line is a neon-only
+ * material). */
+.neon-flow-connector {
+  display: none;
+  position: relative;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--neon-pink-soft),
+    var(--neon-lime-soft)
+  );
+  overflow: visible;
+}
+@media (min-width: 768px) {
+  [data-theme-preset='neon-glass'] .neon-flow-connector {
+    display: block;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .neon-flow-connector::after {
+    position: absolute;
+    top: -3px;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    content: '';
+    background: var(--neon-lime);
+    box-shadow: 0 0 12px var(--neon-lime-soft);
+    animation: neon-flow-dot 2.6s ease-in-out infinite;
+  }
+}
+@keyframes neon-flow-dot {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 8px);
+    opacity: 0;
+  }
+}
+
+/* ── Provider marquee (public home) ──────────────────────────────────────
+ * Horizontal flowing track of provider icons behind a glass lens. The
+ * track translates by -50% (track = two copies) for a seamless loop;
+ * pause on hover, stop under reduced-motion. */
+.neon-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 12%,
+    black 88%,
+    transparent 100%
+  );
+}
+@media (prefers-reduced-motion: no-preference) {
+  .neon-marquee-track {
+    animation: neon-marquee-flow 36s linear infinite;
+  }
+  .neon-marquee:hover .neon-marquee-track {
+    animation-play-state: paused;
+  }
+}
+@keyframes neon-marquee-flow {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* ── Overview metric band ────────────────────────────────────────────────
+ * Each metric cell inside the G2 glass band brightens its glow on hover
+ * (no scaling — the band stays stable). */
+.neon-metric {
+  transition:
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  body [data-theme-preset='neon-glass'] .neon-metric:hover {
+    box-shadow: 0 0 0 1px var(--neon-pink-soft), 0 0 18px var(--neon-pink-soft);
+    background-color: color-mix(
+      in oklch,
+      var(--neon-pink-soft) 30%,
+      var(--background)
+    );
+  }
+}
+
+/* ── Wallet recharge presets ─────────────────────────────────────────────
+ * The selected preset amount button gets a neon glow ring under the
+ * neon-glass preset (base styles use `border-primary` for every theme). */
+.neon-preset-btn {
+  transition:
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  body [data-theme-preset='neon-glass'] .neon-preset-btn:hover {
+    box-shadow: 0 0 0 1px var(--neon-pink-soft), 0 0 12px var(--neon-pink-soft);
+  }
+  body [data-theme-preset='neon-glass'] .neon-preset-btn--active {
+    box-shadow: 0 0 0 1px var(--neon-pink-soft), 0 0 18px var(--neon-pink-soft);
+  }
+}
+
+/* ── Global card surface ──────────────────────────────────────────────────
+ * Every plain `Card` (settings panels, forms, list cards) becomes soft
+ * glass under the neon-glass preset. Cards that already opt into a
+ * `glass-g*` surface keep their own (stronger) blur. */
+[data-theme-preset='neon-glass'] [data-slot='card']:not([class*='glass-g']) {
+  -webkit-backdrop-filter: blur(var(--glass-blur-g1)) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-g1)) saturate(145%);
+}
+
+/* Page footer strip (pagination / save bars) — glass on neon. */
+[data-theme-preset='neon-glass'] [data-slot='section-footer'] {
+  background: var(--glass-g1-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur-g1)) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-g1)) saturate(145%);
+}
+
+/* Generic card-view grid items (DataTableCardGrid). */
+[data-theme-preset='neon-glass'] [data-slot='data-table-card'] {
+  -webkit-backdrop-filter: blur(var(--glass-blur-g1)) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-g1)) saturate(145%);
+}
+
+/* ── Channel monitor band ────────────────────────────────────────────────
+ * When degraded channels exist, the band gains a red-pink glow pool. */
+[data-theme-preset='neon-glass'] .neon-band-alert {
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    var(--glass-shadow),
+    0 0 24px var(--neon-red-soft);
+}
+
+/* ── Degradation ────────────────────────────────────────────────────────── */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-g0,
+  .glass-g1,
+  .glass-g2,
+  .glass-g3,
+  [data-theme-preset='neon-glass'] [data-slot='dialog-content'],
+  [data-theme-preset='neon-glass'] [data-slot='popover-content'],
+  [data-theme-preset='neon-glass'] [data-slot='sheet-content'],
+  [data-theme-preset='neon-glass'] [data-slot='tooltip-content'] {
+    background-color: oklch(0.13 0.01 285 / 0.94);
+  }
+  [data-theme-preset='neon-glass'] [data-slot='sidebar'],
+  [data-theme-preset='neon-glass'] [data-slot='app-header'] {
+    background-color: oklch(0.13 0.01 285 / 0.96);
+  }
+}
+
+/* Mobile: cheaper blur, no drifting blobs. */
+@media (max-width: 767px) {
+  .glass-g0,
+  .glass-g1,
+  .glass-g2,
+  .glass-g3 {
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    backdrop-filter: blur(12px) saturate(140%);
+  }
+  .neon-stage-blob {
+    display: none;
+  }
+}
+
+/* Reduced motion: kill every loop/sweep/pulse. */
+@media (prefers-reduced-motion: reduce) {
+  .neon-stage-blob,
+  .neon-pulse,
+  .neon-status-dot--breath,
+  .neon-status-dot--pulse,
+  .glass-shine::after,
+  [data-theme-preset='neon-glass'] [data-slot='app-header']::after {
+    animation: none !important;
+    transition-duration: 1ms !important;
+  }
+}

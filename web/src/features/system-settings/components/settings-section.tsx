@@ -36,7 +36,14 @@ export function SettingsSection({
   const suppressHeader = useSuppressSettingsSectionHeader()
 
   return (
-    <section className={cn('flex flex-col gap-4', className)}>
+    // `glass-g1` turns every settings group into a soft glass panel under
+    // the neon-glass preset; other presets keep the near-opaque base.
+    <section
+      className={cn(
+        'glass-g1 flex flex-col gap-4 rounded-xl border p-4 sm:p-5',
+        className
+      )}
+    >
       {!suppressHeader && (
         <div className='flex flex-col gap-1'>
           <h3

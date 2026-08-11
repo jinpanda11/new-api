@@ -211,20 +211,31 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
           | undefined
         let tintClass =
           isCommon && logType != null ? (logTypeRowTint[logType] ?? '') : ''
+        let isSaturation = false
         if (isCommon && isAdmin) {
           const other = parseLogOther(
             ((row.original as Record<string, unknown>).other as string) ?? ''
           )
           if (other?.admin_info?.quota_saturation) {
             tintClass = quotaSaturationRowTint
+            isSaturation = true
           }
+        }
+
+        // Left-edge signal line (neon-glass preset): lime for healthy rows,
+        // red for errors, yellow for refunds / billing anomalies.
+        let signalClass = 'neon-signal-line'
+        if (isSaturation || logType === LOG_TYPE_ENUM.REFUND) {
+          signalClass += ' neon-signal-line--yellow'
+        } else if (logType === LOG_TYPE_ENUM.ERROR) {
+          signalClass += ' neon-signal-line--red'
         }
 
         return (
           <DataTableRow
             key={row.id}
             row={row}
-            className={cn('transition-colors', tintClass)}
+            className={cn('transition-colors', tintClass, signalClass)}
             getColumnClassName={() => (isCommon ? 'py-2' : 'py-3.5')}
           />
         )

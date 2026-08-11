@@ -67,8 +67,11 @@ export function PanelWrapper(props: PanelWrapperProps) {
   const { t } = useTranslation()
   const resolvedEmptyMessage = props.emptyMessage ?? t('No data available')
   const height = props.height ?? 'h-64'
+  // `glass-g1` turns every PanelWrapper-backed overview panel into a soft
+  // glass surface under the neon-glass preset; other presets keep the
+  // near-opaque card look via the conservative base tokens.
   const frameClassName = cn(
-    'overflow-hidden rounded-2xl border bg-card shadow-xs',
+    'overflow-hidden rounded-2xl border glass-g1 shadow-xs',
     props.className
   )
 

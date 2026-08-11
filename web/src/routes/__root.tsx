@@ -28,6 +28,7 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { useEffect } from 'react'
 
 import { NavigationProgress } from '@/components/navigation-progress'
+import { NeonStage } from '@/components/neon-stage'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeCustomizationProvider } from '@/context/theme-customization-provider'
 import { saveAffiliateCode } from '@/features/auth/lib/storage'
@@ -94,9 +95,14 @@ function RootComponent() {
 
   return (
     <ThemeCustomizationProvider>
-      <NavigationProgress />
-      <Outlet />
-      <Toaster closeButton duration={5000} position='top-center' richColors />
+      {/* Fixed neon stage behind the whole app; the router outlet is
+       * wrapped in `relative z-10` so all content paints above it. */}
+      <NeonStage />
+      <div className='relative z-10'>
+        <NavigationProgress />
+        <Outlet />
+        <Toaster closeButton duration={5000} position='top-center' richColors />
+      </div>
       {import.meta.env.MODE === 'development' && (
         <>
           <ReactQueryDevtools buttonPosition='bottom-left' />

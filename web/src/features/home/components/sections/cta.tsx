@@ -49,14 +49,23 @@ export function CTA(props: CTAProps) {
         }}
       />
 
+      {/* Oversized decorative "START ROUTING" outline word behind the CTA
+       * (aria-hidden, invisible outside the neon-glass preset). */}
+      <span
+        aria-hidden
+        className='neon-outline-text pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[clamp(3rem,10vw,9rem)] whitespace-nowrap'
+      >
+        Start Routing
+      </span>
+
       <AnimateInView
-        className='mx-auto max-w-2xl text-center'
+        className='glass-g2 relative mx-auto max-w-2xl rounded-xl px-6 py-10 text-center sm:px-10'
         animation='scale-in'
       >
         <h2 className='text-2xl leading-tight font-bold tracking-tight md:text-4xl'>
           {t('Ready to simplify')}
           <br />
-          <span className='bg-gradient-to-r from-blue-400 via-violet-400 to-purple-500 bg-clip-text text-transparent'>
+          <span className='neon-subtitle-gradient from-blue-400 via-violet-400 to-purple-500 bg-gradient-to-r bg-clip-text text-transparent'>
             {t('your AI integration?')}
           </span>
         </h2>

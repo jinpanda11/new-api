@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { Activity, BarChart3, WalletCards } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { TiltCard } from '@/components/tilt-card'
 import { IconBadge, type IconBadgeTone } from '@/components/ui/icon-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatQuota } from '@/lib/format'
@@ -76,27 +77,75 @@ export function WalletStatsCard(props: WalletStatsCardProps) {
     },
   ]
 
+  const balance = stats[0]
+  const secondary = stats.slice(1)
+
   return (
-    <div className='grid grid-cols-3 divide-x rounded-lg border'>
-      {stats.map((item) => (
-        <div key={item.label} className='min-w-0 px-2.5 py-2.5 sm:px-5 sm:py-4'>
-          <div className='flex items-center gap-1.5 sm:gap-2.5'>
-            <IconBadge tone={item.tone} size='stat'>
-              <item.icon />
-            </IconBadge>
-            <div className='text-muted-foreground truncate text-[11px] font-medium tracking-wider uppercase sm:text-xs'>
-              {item.label}
+    <div className='grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]'>
+      {/* Balance card — G3 hero glass, credit-card feel with a gentle
+       * mouse tilt and pink/yellow glow field (neon-glass preset). */}
+      <TiltCard className='min-w-0'>
+        <div className='glass-g3 [--neon-border-fill:var(--glass-g3-bg)] neon-border relative overflow-hidden rounded-2xl p-5 sm:p-6'>
+          {/* Pink/yellow glow field behind the balance. */}
+          <div
+            aria-hidden
+            className='pointer-events-none absolute inset-0'
+            style={{
+              background: [
+                'radial-gradient(ellipse 70% 90% at 8% 20%, var(--neon-pink-soft) 0%, transparent 65%)',
+                'radial-gradient(ellipse 60% 80% at 92% 90%, var(--neon-yellow-soft) 0%, transparent 62%)',
+              ].join(', '),
+            }}
+          />
+          <div className='relative flex min-h-[9rem] flex-col justify-between gap-4'>
+            <div className='flex items-center justify-between gap-2'>
+              <span className='text-muted-foreground text-[11px] font-bold tracking-[0.14em] uppercase'>
+                {t('Available Balance')}
+              </span>
+              <span
+                aria-hidden
+                className='neon-status-dot neon-status-dot--breath'
+              />
+            </div>
+            <div className='text-warning font-mono text-3xl font-bold tracking-tight break-all tabular-nums sm:text-4xl'>
+              {balance.value}
+            </div>
+            <div className='flex flex-col gap-0.5'>
+              <span className='text-muted-foreground/70 text-xs'>
+                {balance.description}
+              </span>
+              <span className='text-muted-foreground/50 text-[11px]'>
+                {t('Balance')} · {t('Remaining quota')}
+              </span>
             </div>
           </div>
-
-          <div className='text-foreground mt-1.5 font-mono text-sm font-bold tracking-tight break-all tabular-nums sm:mt-2.5 sm:text-2xl'>
-            {item.value}
-          </div>
-          <div className='text-muted-foreground/60 mt-1 hidden text-xs md:block'>
-            {item.description}
-          </div>
         </div>
-      ))}
+      </TiltCard>
+
+      {/* Usage/requests band — G2 glow glass. */}
+      <div className='glass-g2 grid grid-cols-2 divide-x overflow-hidden rounded-2xl border'>
+        {secondary.map((item) => (
+          <div
+            key={item.label}
+            className='flex min-w-0 flex-col justify-between gap-3 px-4 py-5 sm:px-5'
+          >
+            <div className='flex items-center gap-1.5 sm:gap-2.5'>
+              <IconBadge tone={item.tone} size='stat'>
+                <item.icon />
+              </IconBadge>
+              <div className='text-muted-foreground truncate text-[11px] font-medium tracking-wider uppercase sm:text-xs'>
+                {item.label}
+              </div>
+            </div>
+            <div className='text-foreground font-mono text-lg font-bold tracking-tight break-all tabular-nums sm:text-2xl'>
+              {item.value}
+            </div>
+            <div className='text-muted-foreground/60 hidden text-xs md:block'>
+              {item.description}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

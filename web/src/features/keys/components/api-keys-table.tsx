@@ -54,6 +54,7 @@ import {
 } from '../constants'
 import type { ApiKey } from '../types'
 import { ApiKeyCell, UnlimitedQuotaBadge } from './api-keys-cells'
+import { ApiKeyCardComponent } from './api-key-card'
 import { useApiKeysColumns } from './api-keys-columns'
 import { useApiKeys } from './api-keys-provider'
 import { DataTableBulkActions } from './data-table-bulk-actions'
@@ -305,6 +306,12 @@ export function ApiKeysTable() {
       )}
       skeletonKeyPrefix='api-keys-skeleton'
       applyHeaderSize
+      enableCardView
+      viewModeStorageKey='api-keys-view-mode'
+      renderCard={(row, { isSelected }) => (
+        <ApiKeyCardComponent row={row} isSelected={isSelected} />
+      )}
+      cardGridClassName='grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3'
       toolbarProps={{
         searchPlaceholder: t('Filter by name...'),
         searchDebounceMs: 500,

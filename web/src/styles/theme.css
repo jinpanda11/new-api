@@ -176,6 +176,42 @@ For commercial licensing, please contact support@quantumnous.com
     var(--foreground) 16%,
     var(--background)
   );
+
+  /* ── Neon Glass material tokens ──────────────────────────────────────
+   * Consumed by the glass utility classes in ./neon.css and the
+   * `neon-glass` theme preset (theme-presets.css). Base values here are
+   * deliberately conservative (near-opaque surfaces) so presets that do
+   * not opt into the neon world see no visual regression; the preset
+   * block swaps in the translucent G0–G3 surfaces. */
+  --glass-g0-bg: oklch(1 0 0 / 0.97);
+  --glass-g1-bg: oklch(0.99 0 0 / 0.96);
+  --glass-g2-bg: oklch(0.98 0 0 / 0.95);
+  --glass-g3-bg: oklch(0.97 0 0 / 0.94);
+  --glass-blur-g0: 8px;
+  --glass-blur-g1: 14px;
+  --glass-blur-g2: 20px;
+  --glass-blur-g3: 28px;
+  --glass-border: oklch(0 0 0 / 0.08);
+  --glass-highlight: oklch(1 0 0 / 0.6);
+  --glass-shadow: 0 24px 80px rgb(0 0 0 / 0.14);
+  --neon-vignette: rgb(255 255 255 / 0.35);
+
+  /* Neon accent palette — the semantic signal colors behind the neon
+   * component variants (buttons, badges, status dots, glow fields).
+   * Overridable per preset in theme-presets.css. */
+  --neon-pink: oklch(0.7 0.28 350);
+  --neon-pink-soft: oklch(0.7 0.28 350 / 0.22);
+  --neon-lime: oklch(0.88 0.22 128);
+  --neon-lime-soft: oklch(0.88 0.22 128 / 0.18);
+  --neon-yellow: oklch(0.9 0.18 98);
+  --neon-yellow-soft: oklch(0.9 0.18 98 / 0.18);
+  --neon-cyan: oklch(0.78 0.15 210);
+  --neon-cyan-soft: oklch(0.78 0.15 210 / 0.18);
+  --neon-red: oklch(0.62 0.24 25);
+  --neon-red-soft: oklch(0.62 0.24 25 / 0.18);
+  --neon-text: oklch(0.97 0.01 285);
+  --neon-text-muted: oklch(0.72 0.02 285);
+  --neon-shadow: 0 28px 90px rgb(0 0 0 / 0.4);
 }
 
 .dark {
@@ -244,4 +280,15 @@ For commercial licensing, please contact support@quantumnous.com
     var(--foreground) 24%,
     var(--background)
   );
+
+  /* Neon Glass material tokens — dark-mode base values (see :root). */
+  --glass-g0-bg: oklch(0.28 0 0 / 0.97);
+  --glass-g1-bg: oklch(0.27 0 0 / 0.96);
+  --glass-g2-bg: oklch(0.26 0 0 / 0.95);
+  --glass-g3-bg: oklch(0.25 0 0 / 0.94);
+  --glass-border: oklch(1 0 0 / 0.12);
+  --glass-highlight: oklch(1 0 0 / 0.2);
+  --glass-shadow: 0 24px 80px rgb(0 0 0 / 0.4);
+  --neon-vignette: rgb(0 0 0 / 0.5);
 }
+

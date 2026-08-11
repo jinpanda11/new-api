@@ -64,6 +64,7 @@ import type { Channel, ChannelSortBy } from '../types'
 import { ChannelCard } from './channel-card'
 import { useChannelsColumns } from './channels-columns'
 import { useChannels } from './channels-provider'
+import { ChannelMonitorBand } from './channel-monitor-band'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 
 const route = getRouteApi('/_authenticated/channels/')
@@ -408,7 +409,9 @@ export function ChannelsTable() {
   ]
 
   return (
-    <DataTablePage
+    <>
+      <ChannelMonitorBand channels={channels} loading={isLoading} />
+      <DataTablePage
       table={table}
       columns={columns}
       isLoading={isLoading}
@@ -492,6 +495,7 @@ export function ChannelsTable() {
         return DISABLED_ROW_DESKTOP
       }}
       bulkActions={batchMode ? <DataTableBulkActions table={table} /> : null}
-    />
+      />
+    </>
   )
 }

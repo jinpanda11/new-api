@@ -403,6 +403,196 @@ For commercial licensing, please contact support@quantumnous.com
   --skeleton-highlight: oklch(0.415 0 0);
 }
 
+/* ── Neon Glass ──────────────────────────────────────────────────────────
+ * The flagship "Neon Glass Console" preset: a near-black stage, translucent
+ * G0–G3 glass surfaces, and a pink / acid-lime / yellow / cyan signal
+ * palette. Dark mode is the full experience; light mode renders an
+ * "ice glass" variant (bright canvas, desaturated glow fields).
+ *
+ * The preset defines its own surfaces (glass instead of primary-tinted
+ * solids), so it is opted out of the semantic surface bridge below —
+ * same mechanism as `anthropic`.
+ *
+ * Color semantics (shared by both modes):
+ *   --primary    = neon pink  (brand, primary actions, active nav)
+ *   --success    = acid lime  (online, success, live output)
+ *   --warning    = bright yellow (balance, warnings, pending)
+ *   --info       = electric cyan (info, models, latency, request flow)
+ *   --destructive = neon red  (errors, failures, dangerous actions)      */
+[data-theme-preset='neon-glass'] {
+  --background: oklch(0.955 0.006 285);
+  --foreground: oklch(0.185 0.012 285);
+  --card: oklch(1 0 0 / 0.82);
+  --card-foreground: oklch(0.185 0.012 285);
+  --popover: oklch(0.99 0.004 285 / 0.94);
+  --popover-foreground: oklch(0.185 0.012 285);
+  --primary: oklch(0.58 0.23 350);
+  --primary-foreground: oklch(0.985 0.01 285);
+  --secondary: oklch(0.9 0.01 285 / 0.75);
+  --secondary-foreground: oklch(0.3 0.02 285);
+  --muted: oklch(0.93 0.006 285 / 0.85);
+  --muted-foreground: oklch(0.48 0.02 285);
+  --accent: oklch(0.88 0.012 285 / 0.8);
+  --accent-foreground: oklch(0.22 0.015 285);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.985 0.01 285);
+  --success: oklch(0.66 0.19 130);
+  --success-foreground: oklch(0.985 0.01 285);
+  --warning: oklch(0.78 0.17 98);
+  --warning-foreground: oklch(0.985 0.01 285);
+  --info: oklch(0.55 0.13 210);
+  --info-foreground: oklch(0.985 0.01 285);
+  --neutral: oklch(0.48 0.02 285);
+  --neutral-foreground: oklch(0.985 0.01 285);
+  --border: oklch(0.25 0.01 285 / 0.14);
+  --input: oklch(0.25 0.01 285 / 0.1);
+  --ring: oklch(0.58 0.23 350);
+  --chart-1: oklch(0.55 0.13 210);
+  --chart-2: oklch(0.58 0.23 350);
+  --chart-3: oklch(0.78 0.17 98);
+  --chart-4: oklch(0.66 0.19 130);
+  --chart-5: oklch(0.55 0.22 25);
+  --sidebar: oklch(0.985 0.004 285 / 0.88);
+  --sidebar-foreground: oklch(0.185 0.012 285);
+  --sidebar-primary: oklch(0.58 0.23 350);
+  --sidebar-primary-foreground: oklch(0.985 0.01 285);
+  --sidebar-accent: oklch(0.9 0.012 285 / 0.9);
+  --sidebar-accent-foreground: oklch(0.24 0.02 285);
+  --sidebar-border: oklch(0.25 0.01 285 / 0.14);
+  --sidebar-ring: oklch(0.58 0.23 350);
+  --skeleton-base: oklch(0.92 0.006 285 / 0.9);
+  --skeleton-highlight: oklch(0.96 0.004 285 / 0.9);
+  --table-row: transparent;
+  --table-header: oklch(0.25 0.01 285 / 0.05);
+  --table-header-hover: oklch(0.25 0.01 285 / 0.09);
+  --table-disabled: oklch(0.25 0.01 285 / 0.04);
+  --table-disabled-hover: oklch(0.25 0.01 285 / 0.07);
+  --table-disabled-border: oklch(0.25 0.01 285 / 0.18);
+
+  /* Ice glass surfaces — bright, high opacity, blur stays low-key. */
+  --glass-g0-bg: oklch(1 0 0 / 0.9);
+  --glass-g1-bg: oklch(1 0 0 / 0.8);
+  --glass-g2-bg: oklch(1 0 0 / 0.7);
+  --glass-g3-bg: oklch(1 0 0 / 0.6);
+  --glass-border: oklch(0.3 0.01 285 / 0.16);
+  --glass-highlight: oklch(1 0 0 / 0.7);
+  --glass-shadow: 0 24px 80px rgb(0 0 0 / 0.18);
+  --neon-vignette: rgb(255 255 255 / 0.4);
+
+  /* Neon accent palette — moderate saturation on ice glass. */
+  --neon-pink: oklch(0.58 0.23 350);
+  --neon-pink-soft: oklch(0.58 0.23 350 / 0.16);
+  --neon-lime: oklch(0.72 0.19 128);
+  --neon-lime-soft: oklch(0.72 0.19 128 / 0.14);
+  --neon-yellow: oklch(0.8 0.16 98);
+  --neon-yellow-soft: oklch(0.8 0.16 98 / 0.14);
+  --neon-cyan: oklch(0.58 0.13 210);
+  --neon-cyan-soft: oklch(0.58 0.13 210 / 0.14);
+  --neon-red: oklch(0.58 0.21 25);
+  --neon-red-soft: oklch(0.58 0.21 25 / 0.14);
+  --neon-text: oklch(0.22 0.012 285);
+  --neon-text-muted: oklch(0.5 0.02 285);
+  --neon-shadow: 0 28px 90px rgb(0 0 0 / 0.2);
+  --neon-violet: oklch(0.58 0.13 300);
+  --neon-violet-soft: oklch(0.58 0.13 300 / 0.12);
+  --neon-violet-glow: oklch(0.52 0.24 293 / 0.1);
+  --neon-pink-glow: oklch(0.73 0.15 345 / 0.08);
+
+  --radius: 0.625rem;
+}
+.dark [data-theme-preset='neon-glass'] {
+  /* Near-black indigo stage — replicated from the T.RICKS Glassmorphism
+   * reference site (#0d0628). Background color only; components/cards
+   * keep the pink / acid-lime / yellow / cyan neon palette. */
+  --background: oklch(0.09 0.032 292);
+  --foreground: oklch(0.965 0.01 285);
+  --card: oklch(0.155 0.012 285 / 0.82);
+  --card-foreground: oklch(0.965 0.01 285);
+  --popover: oklch(0.185 0.014 285 / 0.9);
+  --popover-foreground: oklch(0.965 0.01 285);
+  --primary: oklch(0.7 0.28 350);
+  --primary-foreground: oklch(0.12 0.01 285);
+  --secondary: oklch(0.2 0.014 285 / 0.72);
+  --secondary-foreground: oklch(0.9 0.02 285);
+  --muted: oklch(0.19 0.013 285 / 0.8);
+  --muted-foreground: oklch(0.74 0.02 285);
+  --accent: oklch(0.22 0.015 285 / 0.88);
+  --accent-foreground: oklch(0.985 0.01 285);
+  --destructive: oklch(0.68 0.24 25);
+  --destructive-foreground: oklch(0.12 0.01 285);
+  --success: oklch(0.85 0.23 130);
+  --success-foreground: oklch(0.12 0.01 285);
+  --warning: oklch(0.9 0.19 98);
+  --warning-foreground: oklch(0.12 0.01 285);
+  --info: oklch(0.8 0.17 210);
+  --info-foreground: oklch(0.12 0.01 285);
+  --neutral: oklch(0.74 0.02 285);
+  --neutral-foreground: oklch(0.12 0.01 285);
+  --border: oklch(1 0 0 / 0.2);
+  --input: oklch(1 0 0 / 0.14);
+  --ring: oklch(0.7 0.28 350);
+  --chart-1: oklch(0.8 0.17 210); /* request flow — cyan */
+  --chart-2: oklch(0.7 0.28 350); /* tokens — pink */
+  --chart-3: oklch(0.9 0.19 98); /* cost — yellow */
+  --chart-4: oklch(0.85 0.23 130); /* success — lime */
+  --chart-5: oklch(0.68 0.24 25); /* errors — red */
+  --sidebar: oklch(0.13 0.01 285 / 0.86);
+  --sidebar-foreground: oklch(0.965 0.01 285);
+  --sidebar-primary: oklch(0.7 0.28 350);
+  --sidebar-primary-foreground: oklch(0.12 0.01 285);
+  --sidebar-accent: oklch(0.24 0.015 285 / 0.9);
+  --sidebar-accent-foreground: oklch(0.985 0.01 285);
+  --sidebar-border: oklch(1 0 0 / 0.16);
+  --sidebar-ring: oklch(0.7 0.28 350);
+  --skeleton-base: oklch(0.24 0.014 285 / 0.8);
+  --skeleton-highlight: oklch(0.3 0.016 285 / 0.8);
+  --table-row: transparent;
+  --table-header: oklch(1 0 0 / 0.045);
+  --table-header-hover: oklch(1 0 0 / 0.09);
+  --table-disabled: oklch(1 0 0 / 0.035);
+  --table-disabled-hover: oklch(1 0 0 / 0.065);
+  --table-disabled-border: oklch(1 0 0 / 0.16);
+
+  /* Glass material — G0 (tables) most opaque, G3 (hero) most transparent. */
+  --glass-g0-bg: oklch(0.155 0.012 285 / 0.92);
+  --glass-g1-bg: oklch(0.155 0.012 285 / 0.82);
+  --glass-g2-bg: oklch(0.16 0.013 285 / 0.72);
+  --glass-g3-bg: oklch(0.17 0.014 285 / 0.6);
+  --glass-border: oklch(1 0 0 / 0.2);
+  --glass-highlight: oklch(1 0 0 / 0.28);
+  --glass-shadow: 0 24px 80px rgb(0 0 0 / 0.42);
+  --neon-vignette: rgb(0 0 0 / 0.55);
+
+  /* Neon accent palette — full saturation on the dark stage. */
+  --neon-pink: oklch(0.7 0.28 350);
+  --neon-pink-soft: oklch(0.7 0.28 350 / 0.24);
+  --neon-lime: oklch(0.9 0.23 125);
+  --neon-lime-soft: oklch(0.9 0.23 125 / 0.2);
+  --neon-yellow: oklch(0.92 0.2 98);
+  --neon-yellow-soft: oklch(0.92 0.2 98 / 0.18);
+  --neon-cyan: oklch(0.8 0.18 210);
+  --neon-cyan-soft: oklch(0.8 0.18 210 / 0.18);
+  --neon-red: oklch(0.65 0.25 25);
+  --neon-red-soft: oklch(0.65 0.25 25 / 0.18);
+  --neon-text: oklch(0.97 0.01 285);
+  --neon-text-muted: oklch(0.74 0.02 285);
+  --neon-shadow: 0 28px 90px rgb(0 0 0 / 0.46);
+
+  /* Background-only violet glow — consumed by the stage, hero and auth
+   * glow fields. Components never use these tokens, so the violet
+   * atmosphere is strictly a background concern.
+   * `*-glow` tones replicate the T.RICKS reference blobs: a large violet
+   * orb (#5C31FF) entering from the bottom-right with a smaller pink orb
+   * (#F88CD4) nested inside. */
+  --neon-violet: oklch(0.75 0.17 300);
+  --neon-violet-soft: oklch(0.75 0.17 300 / 0.14);
+  --neon-violet-glow: oklch(0.52 0.28 293 / 0.3);
+  --neon-pink-glow: oklch(0.73 0.17 345 / 0.22);
+
+  --radius: 0.625rem;
+  --app-header-height: 3.5rem;
+}
+
 /* Overview accents mirror the public blue/cyan/violet palette by default.
  * Named presets map those slots to their own chart palette so the overview
  * stays coherent with the user's selected theme. */
@@ -426,10 +616,14 @@ For commercial licensing, please contact support@quantumnous.com
  *   - `anthropic`: warm cream surfaces are a brand choice, NOT a primary-mix
  *     derivation (the Anthropic system deliberately uses warm neutrals for
  *     cards/borders rather than tinting them with the clay accent).
+ *   - `neon-glass`: translucent glass surfaces are the whole point of the
+ *     preset — tinting them with the pink primary would kill the material.
  *   - `simple-large`: keeps intentionally neutral, high-contrast surfaces. */
 [data-theme-preset]:not([data-theme-preset='default']):not(
   [data-theme-preset='anthropic']
-):not([data-theme-preset='simple-large']) {
+):not([data-theme-preset='neon-glass']):not(
+  [data-theme-preset='simple-large']
+) {
   --card: color-mix(in oklch, var(--primary) 3%, var(--background));
   --popover: color-mix(in oklch, var(--primary) 5%, var(--background));
   --muted: color-mix(in oklch, var(--primary) 7%, var(--background));
@@ -454,7 +648,9 @@ For commercial licensing, please contact support@quantumnous.com
 .dark
   [data-theme-preset]:not([data-theme-preset='default']):not(
     [data-theme-preset='anthropic']
-  ):not([data-theme-preset='simple-large']) {
+  ):not([data-theme-preset='neon-glass']):not(
+    [data-theme-preset='simple-large']
+  ) {
   --card: color-mix(in oklch, var(--primary) 8%, var(--background));
   --popover: color-mix(in oklch, var(--primary) 12%, var(--background));
   --muted: color-mix(in oklch, var(--primary) 12%, var(--background));

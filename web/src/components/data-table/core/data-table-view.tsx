@@ -62,7 +62,9 @@ export function DataTableView<TData>(props: DataTableViewProps<TData>) {
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-lg border',
+        // `glass-g0` (clear glass) makes every DataTablePage-backed table a
+        // translucent surface under the neon-glass preset.
+        'glass-g0 overflow-hidden rounded-lg border',
         props.containerClassName
       )}
       {...props.containerProps}

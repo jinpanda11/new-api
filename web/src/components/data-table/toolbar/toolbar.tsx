@@ -376,7 +376,9 @@ export function DataTableToolbar<TData>(props: DataTableToolbarProps<TData>) {
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-2 sm:gap-3',
+        // `glass-g2` (glow glass) hosts the page toolbar under the
+        // neon-glass preset; other presets keep the near-opaque base.
+        'glass-g2 flex flex-wrap items-center gap-2 rounded-xl border p-2.5 sm:gap-3 sm:p-3',
         props.className
       )}
     >

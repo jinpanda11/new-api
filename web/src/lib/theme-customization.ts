@@ -25,6 +25,15 @@ For commercial licensing, please contact support@quantumnous.com
 
 export const THEME_PRESETS = [
   {
+    // Flagship "Neon Glass Console" preset: near-black stage, translucent
+    // glass surfaces, pink/lime signal accents. Listed first because it is
+    // the recommended (and default) preset. Swatches preview the pink →
+    // lime accent pair that drives the whole material system.
+    value: 'neon-glass',
+    name: 'Neon Glass',
+    swatches: ['oklch(0.7 0.28 350)', 'oklch(0.9 0.23 125)'],
+  },
+  {
     value: 'default',
     name: 'Default',
     swatches: ['oklch(0.72 0.18 250)', 'oklch(0.7 0.12 280)'],
@@ -116,7 +125,7 @@ export type ThemeCustomization = {
 }
 
 export const DEFAULT_THEME_CUSTOMIZATION: ThemeCustomization = {
-  preset: 'default',
+  preset: 'neon-glass',
   font: 'default',
   radius: 'default',
   scale: 'default',
@@ -177,6 +186,7 @@ export const PRESET_DEFAULT_FONT: Partial<
   Record<ThemePreset, ResolvedThemeFont>
 > = {
   default: 'sans',
+  'neon-glass': 'sans',
   anthropic: 'serif',
 }
 

@@ -36,6 +36,8 @@ type TitledCardProps = {
   action?: ReactNode
   children?: ReactNode
   disableHoverEffect?: boolean
+  /** Glass surface variant, forwarded to the inner Card (see card.tsx). */
+  surface?: 'default' | 'clear' | 'soft' | 'glow' | 'hero'
   className?: string
   headerClassName?: string
   contentClassName?: string
@@ -52,6 +54,7 @@ export function TitledCard({
   action,
   children,
   disableHoverEffect,
+  surface,
   className,
   headerClassName,
   contentClassName,
@@ -62,6 +65,7 @@ export function TitledCard({
 }: TitledCardProps) {
   return (
     <Card
+      surface={surface}
       data-card-hover={disableHoverEffect ? 'false' : undefined}
       className={cn('gap-0 overflow-hidden py-0', className)}
     >

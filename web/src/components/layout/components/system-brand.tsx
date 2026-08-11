@@ -65,6 +65,9 @@ export function SystemBrand(props: SystemBrandProps) {
           'hover:bg-accent focus-visible:ring-ring/40 focus-visible:ring-2'
         )}
       >
+        {/* Live signal light — breathes a lime glow under the neon-glass
+         * preset, hidden elsewhere (see styles/neon.css). */}
+        <span aria-hidden='true' className='neon-brand-pulse' />
         <div className='flex size-5 items-center justify-center overflow-hidden rounded-md'>
           <img
             src={logo}
