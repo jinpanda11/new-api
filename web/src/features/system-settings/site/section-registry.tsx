@@ -66,6 +66,7 @@ const SITE_SECTIONS = [
     build: (settings: SiteSettings) => (
       <InterfaceLanguageSection
         defaultLanguage={settings['general_setting.interface_language']}
+        defaultTheme={settings['general_setting.default_theme']}
       />
     ),
   },

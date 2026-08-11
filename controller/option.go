@@ -162,6 +162,14 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "general_setting.default_theme":
+		if !operation_setting.IsSupportedDefaultTheme(option.Value.(string)) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "不支持的主题模式",
+			})
+			return
+		}
 	case "GitHubOAuthEnabled":
 		if option.Value == "true" && common.GitHubClientId == "" {
 			c.JSON(http.StatusOK, gin.H{

@@ -633,31 +633,50 @@ body [data-theme-preset='neon-glass']
 }
 
 /* Hero subtitle gradient: the default blue/violet/purple stays for other
- * presets; the neon-glass preset swaps in the pink→yellow→cyan sweep. */
+ * presets; the neon-glass preset swaps in a violet sweep that matches the
+ * purple stage atmosphere. */
 [data-theme-preset='neon-glass'] .neon-subtitle-gradient {
   background-image: linear-gradient(
     92deg,
-    var(--neon-pink),
-    var(--neon-yellow),
-    var(--neon-cyan)
+    oklch(0.56 0.22 300),
+    var(--neon-violet)
   );
 }
 
-/* Oversized outline text behind the hero terminal. */
+/* Oversized outline text behind the hero terminal. Sized to sit inside
+ * the hero's top/bottom padding bands so it never overlaps the headline
+ * or the section below; positioned flush to the edges so no letter is
+ * clipped away (a clipped first letter reads as a typo). */
 [data-theme-preset='neon-glass'] .neon-hero-outline {
   position: absolute;
   z-index: -1;
-  font-size: clamp(8rem, 24vw, 22rem);
+  font-size: clamp(3.25rem, 9vw, 8.5rem);
   font-weight: 900;
   white-space: nowrap;
 }
-.neon-hero-outline--a {
-  top: 6%;
-  left: -4%;
-}
 .neon-hero-outline--b {
-  right: -6%;
-  bottom: 4%;
+  right: 1%;
+  bottom: 0;
+}
+@media (max-width: 767px) {
+  .neon-hero-outline {
+    display: none;
+  }
+}
+
+/* Inline background word (ROUTER) — its own layout row directly below the
+ * signal badge, so it can never overlap the headline. Hidden on mobile. */
+[data-theme-preset='neon-glass'] .neon-hero-outline--inline {
+  display: block;
+  font-size: clamp(2.5rem, 6vw, 5.5rem);
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+@media (max-width: 767px) {
+  .neon-hero-outline--inline {
+    display: none;
+  }
 }
 
 /* Public header: when scrolled, the floating nav becomes G3 hero glass
@@ -818,6 +837,27 @@ body [data-theme-preset='neon-glass']
     inset 0 1px 0 var(--glass-highlight),
     var(--glass-shadow),
     0 0 24px var(--neon-red-soft);
+}
+
+/* ── Primary buttons (dark mode) ─────────────────────────────────────────
+ * Dark-mode primary buttons get a violet gradient (light → deep) that
+ * matches the purple stage; hover lifts the gradient. Scoped to the
+ * `bg-primary` default variant via the literal utility class. */
+.dark [data-theme-preset='neon-glass'] [data-slot='button'].bg-primary {
+  background-image: linear-gradient(
+    135deg,
+    oklch(0.72 0.19 300),
+    oklch(0.56 0.2 300)
+  );
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dark [data-theme-preset='neon-glass'] [data-slot='button'].bg-primary:hover {
+    background-image: linear-gradient(
+      135deg,
+      oklch(0.78 0.19 300),
+      oklch(0.62 0.2 300)
+    );
+  }
 }
 
 /* ── Degradation ────────────────────────────────────────────────────────── */

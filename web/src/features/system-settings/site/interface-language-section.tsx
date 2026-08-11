@@ -67,17 +67,26 @@ const interfaceLanguageSchema = z.object({
       'vi',
       'zhTW',
     ]),
+    default_theme: z.enum(['system', 'light', 'dark']),
   }),
 })
 
 type InterfaceLanguageFormValues = z.infer<typeof interfaceLanguageSchema>
 
+const DEFAULT_THEME_OPTIONS = [
+  { value: 'system', labelKey: 'Follow System' },
+  { value: 'light', labelKey: 'Light' },
+  { value: 'dark', labelKey: 'Dark' },
+] as const
+
 type InterfaceLanguageSectionProps = {
   defaultLanguage: InterfaceLanguageCode
+  defaultTheme: 'system' | 'light' | 'dark'
 }
 
 export function InterfaceLanguageSection({
   defaultLanguage,
+  defaultTheme,
 }: InterfaceLanguageSectionProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
@@ -90,20 +99,31 @@ export function InterfaceLanguageSection({
         InterfaceLanguageFormValues
       >,
       defaultValues: {
-        general_setting: { interface_language: defaultLanguage },
+        general_setting: {
+          interface_language: defaultLanguage,
+          default_theme: defaultTheme,
+        },
       },
       onSubmit: async (_data, changedFields) => {
         const language = changedFields['general_setting.interface_language']
-        if (typeof language !== 'string') return
+        const theme = changedFields['general_setting.default_theme']
 
-        const result = await updateOption.mutateAsync({
-          key: 'general_setting.interface_language',
-          value: language,
-        })
-        if (!result.success) return
+        if (typeof language === 'string') {
+          const result = await updateOption.mutateAsync({
+            key: 'general_setting.interface_language',
+            value: language,
+          })
+          if (!result.success) return
 
-        await applyDefaultInterfaceLanguage(language)
-        await applyUserInterfaceLanguage(useAuthStore.getState().auth.user)
+          await applyDefaultInterfaceLanguage(language)
+          await applyUserInterfaceLanguage(useAuthStore.getState().auth.user)
+        }
+        if (theme === 'system' || theme === 'light' || theme === 'dark') {
+          await updateOption.mutateAsync({
+            key: 'general_setting.default_theme',
+            value: theme,
+          })
+        }
       },
     })
 
@@ -152,6 +172,44 @@ export function InterfaceLanguageSection({
                   <FormDescription>
                     {t(
                       'Used for signed-out visitors and users without a saved language preference.'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='general_setting.default_theme'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Default Theme')}</FormLabel>
+                  <Select
+                    items={DEFAULT_THEME_OPTIONS.map((option) => ({
+                      value: option.value,
+                      label: t(option.labelKey),
+                    }))}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger className='w-full sm:max-w-72'>
+                        <SelectValue placeholder={t('Select theme')} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectGroup>
+                        {DEFAULT_THEME_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {t(option.labelKey)}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {t(
+                      'Theme shown to signed-out visitors. Users who switch the theme themselves keep their own choice.'
                     )}
                   </FormDescription>
                   <FormMessage />

@@ -24,7 +24,6 @@ import {
   redirect,
   useNavigate,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { useEffect } from 'react'
 
 import { NavigationProgress } from '@/components/navigation-progress'
@@ -106,7 +105,11 @@ function RootComponent() {
       {import.meta.env.MODE === 'development' && (
         <>
           <ReactQueryDevtools buttonPosition='bottom-left' />
-          <TanStackRouterDevtools position='bottom-right' />
+          {/* TanStackRouterDevtools panel renders unpositioned (static) at
+           * the end of the document body in this devtools version, pushing
+           * two large scrollable blocks into the page bottom. Disabled
+           * until the panel renders fixed again. */}
+          {/* <TanStackRouterDevtools position='bottom-right' /> */}
         </>
       )}
     </ThemeCustomizationProvider>

@@ -42,6 +42,7 @@ const defaultSiteSettings: SiteSettings = {
   ImagePlaygroundSizeOptions: '',
   ImagePlaygroundDefaultModel: '',
   'general_setting.interface_language': 'en',
+  'general_setting.default_theme': 'system',
 }
 
 export function SiteSettings() {

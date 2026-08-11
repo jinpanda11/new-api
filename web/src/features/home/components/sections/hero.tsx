@@ -82,15 +82,9 @@ export function Hero(props: HeroProps) {
   }
 
   return (
-    <section className='relative z-10 overflow-hidden px-6 pt-28 pb-20 md:pt-36 md:pb-28 lg:pt-40'>
+    <section className='relative z-10 overflow-hidden px-6 pt-16 pb-20 md:pt-24 md:pb-28 lg:pt-28'>
       {/* Oversized decorative outline words behind the stage (aria-hidden,
        * invisible outside the neon-glass preset). */}
-      <span
-        aria-hidden
-        className='neon-outline-text neon-hero-outline neon-hero-outline--a'
-      >
-        Route
-      </span>
       <span
         aria-hidden
         className='neon-outline-text neon-hero-outline neon-hero-outline--b'
@@ -113,13 +107,23 @@ export function Hero(props: HeroProps) {
       />
 
       <div className='mx-auto flex max-w-5xl flex-col items-center text-center'>
-        {/* Online signal badge */}
-        <div
-          className='landing-animate-fade-up mb-6 inline-flex items-center gap-2 rounded-full border border-border/40 bg-muted/10 px-3.5 py-1.5 text-[11px] font-medium text-muted-foreground opacity-0 backdrop-blur-sm'
-          style={{ animationDelay: '0ms' }}
-        >
-          <span aria-hidden className='neon-status-dot neon-status-dot--breath' />
-          <span>{t('AI Application Infrastructure Foundation')}</span>
+        {/* Online signal badge, with the ROUTER background word sitting
+         * right below it as its own layout row (no overlap with the
+         * headline; hidden on mobile). */}
+        <div className='mb-4'>
+          <div
+            className='landing-animate-fade-up inline-flex items-center gap-2 rounded-full border border-border/40 bg-muted/10 px-3.5 py-1.5 text-[11px] font-medium text-muted-foreground opacity-0 backdrop-blur-sm'
+            style={{ animationDelay: '0ms' }}
+          >
+            <span aria-hidden className='neon-status-dot neon-status-dot--breath' />
+            <span>{t('AI Application Infrastructure Foundation')}</span>
+          </div>
+          <span
+            aria-hidden
+            className='neon-outline-text neon-hero-outline--inline'
+          >
+            JPGAPI
+          </span>
         </div>
 
         {/* Brand title — the product name is the H1, directly on the stage. */}

@@ -16,6 +16,12 @@ const (
 	InterfaceLanguageJa   = "ja"
 	InterfaceLanguageVi   = "vi"
 	InterfaceLanguageZhTW = "zhTW"
+
+	// 站点默认主题：跟随系统 / 浅色 / 深色。仅对未手动选择过主题的
+	// 访客生效（前端在无 `vite-ui-theme` cookie 时应用此配置）。
+	DefaultThemeSystem = "system"
+	DefaultThemeLight  = "light"
+	DefaultThemeDark   = "dark"
 )
 
 type GeneralSetting struct {
@@ -30,6 +36,8 @@ type GeneralSetting struct {
 	CustomCurrencyExchangeRate float64 `json:"custom_currency_exchange_rate"`
 	// 网站默认界面语言，用户可以在个人设置中覆盖此项。
 	InterfaceLanguage string `json:"interface_language"`
+	// 网站默认主题（system / light / dark），用户手动切换后以前端 cookie 为准。
+	DefaultTheme string `json:"default_theme"`
 }
 
 // 默认配置
@@ -41,6 +49,17 @@ var generalSetting = GeneralSetting{
 	CustomCurrencySymbol:       "¤",
 	CustomCurrencyExchangeRate: 1.0,
 	InterfaceLanguage:          InterfaceLanguageEn,
+	DefaultTheme:               DefaultThemeSystem,
+}
+
+// IsSupportedDefaultTheme 校验站点默认主题取值。
+func IsSupportedDefaultTheme(theme string) bool {
+	switch theme {
+	case DefaultThemeSystem, DefaultThemeLight, DefaultThemeDark:
+		return true
+	default:
+		return false
+	}
 }
 
 func init() {

@@ -75,6 +75,24 @@ function getStoredTheme(storageKey: string, fallback: Theme): Theme {
   return storedTheme && THEMES.has(storedTheme) ? storedTheme : fallback
 }
 
+/**
+ * Resolve the admin-configured default theme from `/api/status`. Falls back
+ * to `null` (keep the provider default) when unavailable.
+ */
+async function fetchServerDefaultTheme(): Promise<Theme | null> {
+  try {
+    const response = await fetch('/api/status')
+    if (!response.ok) return null
+    const json = (await response.json()) as {
+      data?: { default_theme?: string }
+    }
+    const theme = json?.data?.default_theme
+    return THEMES.has(theme as Theme) ? (theme as Theme) : null
+  } catch {
+    return null
+  }
+}
+
 export function ThemeProvider({
   children,
   defaultTheme = DEFAULT_THEME,
@@ -87,6 +105,25 @@ export function ThemeProvider({
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
     resolveTheme(getStoredTheme(storageKey, defaultTheme))
   )
+
+  // Apply the admin-configured default theme to visitors who never switched
+  // the theme themselves (no cookie). A user's own choice always wins and
+  // is never overwritten; the server default is not persisted to a cookie.
+  useEffect(() => {
+    // `getCookie` returns `undefined` when the cookie is absent.
+    const hasUserChoice = getCookie(storageKey) !== undefined
+    if (hasUserChoice) return
+
+    let cancelled = false
+    void fetchServerDefaultTheme().then((serverDefault) => {
+      if (!cancelled && serverDefault !== null && serverDefault !== theme) {
+        _setTheme(serverDefault)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [storageKey, theme])
 
   useEffect(() => {
     const root = window.document.documentElement
