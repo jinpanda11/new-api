@@ -286,7 +286,7 @@ export function SummaryCards() {
           </StaggerContainer>
         </div>
 
-        <div className='flex flex-col justify-between gap-3 border-t bg-[linear-gradient(135deg,color-mix(in_oklch,var(--overview-accent-2)_12%,var(--background))_0%,color-mix(in_oklch,oklch(0.82_0.04_155)_8%,var(--background))_48%,color-mix(in_oklch,var(--overview-accent-1)_7%,var(--background))_100%)] p-3 sm:gap-4 sm:p-5 xl:border-t-0 xl:border-l'>
+        <div className='flex flex-col justify-between gap-3 border-t bg-[linear-gradient(135deg,color-mix(in_oklch,var(--overview-accent-2)_12%,var(--background))_0%,color-mix(in_oklch,oklch(0.82_0.04_155)_8%,var(--background))_48%,color-mix(in_oklch,var(--overview-accent-1)_7%,var(--background))_100%)] p-3 sm:gap-4 sm:p-5 xl:border-t-0 xl:border-l dark:border-pink-200/15 dark:bg-[radial-gradient(ellipse_88%_72%_at_18%_0%,color-mix(in_oklch,oklch(0.82_0.17_338)_22%,transparent)_0%,transparent_64%),radial-gradient(ellipse_68%_58%_at_100%_18%,color-mix(in_oklch,oklch(0.88_0.12_210)_10%,transparent)_0%,transparent_68%),linear-gradient(135deg,color-mix(in_oklch,var(--background)_68%,oklch(0.74_0.16_338)_32%)_0%,color-mix(in_oklch,var(--background)_82%,oklch(0.62_0.14_318)_18%)_52%,color-mix(in_oklch,var(--background)_78%,oklch(0.86_0.18_348)_22%)_100%)] dark:shadow-[inset_0_1px_0_color-mix(in_oklch,white_16%,transparent),0_20px_48px_color-mix(in_oklch,oklch(0.72_0.19_338)_18%,transparent)]'>
           <div className='flex flex-col gap-2 sm:gap-3'>
             <div className='flex items-center justify-between'>
               <span className='text-muted-foreground text-xs font-medium'>
@@ -308,7 +308,7 @@ export function SummaryCards() {
             </div>
 
             <div className='grid grid-cols-2 gap-2'>
-              <div className='bg-background/60 rounded-lg px-2.5 py-2'>
+              <div className='bg-background/60 rounded-lg px-2.5 py-2 dark:border dark:border-pink-100/10 dark:bg-pink-50/[0.055] dark:shadow-[inset_0_1px_0_color-mix(in_oklch,white_8%,transparent)]'>
                 <div className='text-muted-foreground flex items-center gap-1 text-[11px] leading-none font-medium'>
                   <Flame className='size-3 shrink-0' aria-hidden='true' />
                   <span className='truncate'>{t('Last 24h usage')}</span>
@@ -317,7 +317,7 @@ export function SummaryCards() {
                   {formatQuota(recentUsage)}
                 </div>
               </div>
-              <div className='bg-background/60 rounded-lg px-2.5 py-2'>
+              <div className='bg-background/60 rounded-lg px-2.5 py-2 dark:border dark:border-pink-100/10 dark:bg-pink-50/[0.055] dark:shadow-[inset_0_1px_0_color-mix(in_oklch,white_8%,transparent)]'>
                 <div className='text-muted-foreground flex items-center gap-1 text-[11px] leading-none font-medium'>
                   {runwayDays !== null && runwayDays < 3 ? (
                     <TrendingDown

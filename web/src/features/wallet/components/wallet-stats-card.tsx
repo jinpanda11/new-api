@@ -83,17 +83,17 @@ export function WalletStatsCard(props: WalletStatsCardProps) {
   return (
     <div className='grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]'>
       {/* Balance card — G3 hero glass, credit-card feel with a gentle
-       * mouse tilt and pink/yellow glow field (neon-glass preset). */}
+       * mouse tilt and soft glow field (neon-glass preset). */}
       <TiltCard className='min-w-0'>
-        <div className='glass-g3 [--neon-border-fill:var(--glass-g3-bg)] neon-border relative overflow-hidden rounded-2xl p-5 sm:p-6'>
-          {/* Pink/yellow glow field behind the balance. */}
+        <div className='glass-g3 neon-border relative overflow-hidden rounded-2xl p-5 [--neon-border-fill:var(--glass-g3-bg)] [--wallet-balance-right-glow:var(--neon-yellow-soft)] sm:p-6 dark:[--neon-lime-soft:color-mix(in_oklch,var(--neon-violet)_28%,transparent)] dark:[--neon-lime:var(--neon-violet)] dark:[--wallet-balance-right-glow:color-mix(in_oklch,var(--neon-violet)_34%,transparent)]'>
+          {/* Soft glow field behind the balance. */}
           <div
             aria-hidden
             className='pointer-events-none absolute inset-0'
             style={{
               background: [
                 'radial-gradient(ellipse 70% 90% at 8% 20%, var(--neon-pink-soft) 0%, transparent 65%)',
-                'radial-gradient(ellipse 60% 80% at 92% 90%, var(--neon-yellow-soft) 0%, transparent 62%)',
+                'radial-gradient(ellipse 60% 80% at 92% 90%, var(--wallet-balance-right-glow) 0%, transparent 62%)',
               ].join(', '),
             }}
           />
