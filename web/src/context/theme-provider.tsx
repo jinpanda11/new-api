@@ -26,14 +26,17 @@ import {
 } from 'react'
 
 import { getCookie, setCookie, removeCookie } from '@/lib/cookies'
+import {
+  applyThemeToDom,
+  DEFAULT_THEME,
+  isTheme,
+  resolveTheme,
+  THEME_COOKIE_NAME,
+  type ResolvedTheme,
+  type Theme,
+} from '@/lib/theme'
 
-type Theme = 'dark' | 'light' | 'system'
-type ResolvedTheme = Exclude<Theme, 'system'>
-
-const DEFAULT_THEME = 'system'
-const THEME_COOKIE_NAME = 'vite-ui-theme'
 const THEME_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 // 1 year
-const THEMES = new Set<Theme>(['dark', 'light', 'system'])
 
 type ThemeProviderProps = {
   children: React.ReactNode
@@ -59,40 +62,17 @@ const initialState: ThemeProviderState = {
 
 const ThemeContext = createContext<ThemeProviderState>(initialState)
 
-function getSystemTheme(): ResolvedTheme {
-  if (typeof window === 'undefined') return 'light'
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light'
-}
-
-function resolveTheme(theme: Theme): ResolvedTheme {
-  return theme === 'system' ? getSystemTheme() : theme
-}
-
 function getStoredTheme(storageKey: string, fallback: Theme): Theme {
-  const storedTheme = getCookie(storageKey) as Theme | undefined
-  return storedTheme && THEMES.has(storedTheme) ? storedTheme : fallback
+  const storedTheme = getCookie(storageKey)
+  return isTheme(storedTheme) ? storedTheme : fallback
 }
 
 /**
- * Resolve the admin-configured default theme from `/api/status`. Falls back
- * to `null` (keep the provider default) when unavailable.
+ * The provider's `defaultTheme` is the admin-configured server default
+ * resolved by the app bootstrap (see `main.tsx`), falling back to
+ * `'system'`. The user's own cookie choice always wins and is never
+ * overwritten; the server default is not persisted to a cookie.
  */
-async function fetchServerDefaultTheme(): Promise<Theme | null> {
-  try {
-    const response = await fetch('/api/status')
-    if (!response.ok) return null
-    const json = (await response.json()) as {
-      data?: { default_theme?: string }
-    }
-    const theme = json?.data?.default_theme
-    return THEMES.has(theme as Theme) ? (theme as Theme) : null
-  } catch {
-    return null
-  }
-}
-
 export function ThemeProvider({
   children,
   defaultTheme = DEFAULT_THEME,
@@ -106,34 +86,11 @@ export function ThemeProvider({
     resolveTheme(getStoredTheme(storageKey, defaultTheme))
   )
 
-  // Apply the admin-configured default theme to visitors who never switched
-  // the theme themselves (no cookie). A user's own choice always wins and
-  // is never overwritten; the server default is not persisted to a cookie.
   useEffect(() => {
-    // `getCookie` returns `undefined` when the cookie is absent.
-    const hasUserChoice = getCookie(storageKey) !== undefined
-    if (hasUserChoice) return
-
-    let cancelled = false
-    void fetchServerDefaultTheme().then((serverDefault) => {
-      if (!cancelled && serverDefault !== null && serverDefault !== theme) {
-        _setTheme(serverDefault)
-      }
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [storageKey, theme])
-
-  useEffect(() => {
-    const root = window.document.documentElement
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
     const applyTheme = () => {
-      const nextResolvedTheme = theme === 'system' ? getSystemTheme() : theme
-      root.classList.remove('light', 'dark')
-      root.classList.add(nextResolvedTheme)
-      setResolvedTheme(nextResolvedTheme)
+      setResolvedTheme(applyThemeToDom(theme))
     }
 
     applyTheme()

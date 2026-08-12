@@ -30,11 +30,15 @@ type PublicLayoutProps = {
   showNotifications?: boolean
   logo?: React.ReactNode
   siteName?: string
+  revealNeonStage?: boolean
 }
 
 export function PublicLayout(props: PublicLayoutProps) {
   return (
-    <div className='bg-background text-foreground relative min-h-svh overflow-x-clip'>
+    <div
+      data-reveal-neon-stage={props.revealNeonStage || undefined}
+      className='bg-background text-foreground relative min-h-svh overflow-x-clip'
+    >
       <PublicHeader
         navContent={props.navContent}
         navLinks={props.navLinks}

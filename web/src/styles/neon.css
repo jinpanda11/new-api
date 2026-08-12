@@ -38,8 +38,8 @@ For commercial licensing, please contact support@quantumnous.com
 
 /* ── Stage ────────────────────────────────────────────────────────────────
  * Full-viewport fixed background layer (mounted once at the app root):
- * hairline grid + wide pink/lime/cyan glow fields + vignette. Hidden
- * unless the neon-glass preset is active. */
+ * subtle noise + wide glow fields + vignette. Hidden unless the neon-glass
+ * preset is active and the current product page explicitly opts in. */
 .neon-stage {
   position: fixed;
   inset: 0;
@@ -49,8 +49,6 @@ For commercial licensing, please contact support@quantumnous.com
   opacity: 0;
   transition: opacity 300ms ease;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
     /* T.RICKS-style orbs entering from the bottom-right: a huge violet
      * orb (#5C31FF) with a smaller pink orb (#F88CD4) nested inside. */
     radial-gradient(
@@ -68,21 +66,101 @@ For commercial licensing, please contact support@quantumnous.com
       var(--neon-pink-soft),
       transparent 70%
     );
-  background-size: 48px 48px, 48px 48px, auto, auto, auto, auto;
 }
 
-[data-theme-preset='neon-glass'] .neon-stage {
+[data-theme-preset='neon-glass']:has([data-reveal-neon-stage='true'])
+  .neon-stage {
   opacity: 1;
 }
 
+.dark [data-theme-preset='neon-glass'] [data-reveal-neon-stage='true'] {
+  background-color: transparent;
+}
+
+.dark
+  [data-theme-preset='neon-glass']
+  [data-reveal-neon-stage='true']
+  [data-slot='sidebar-inset'] {
+  background-color: transparent;
+}
+
+.dark
+  [data-theme-preset='neon-glass']
+  [data-reveal-neon-stage='true']
+  .neon-public-page-glow {
+  opacity: 0.04;
+}
+
+.dark
+  [data-theme-preset='neon-glass']
+  [data-reveal-neon-stage='true']
+  .neon-auth-glow {
+  opacity: 0.72;
+}
+
+.dark
+  [data-theme-preset='neon-glass']:has([data-reveal-neon-stage='true'])
+  .neon-stage {
+  background-color: color-mix(
+    in oklch,
+    var(--background) 86%,
+    var(--neon-violet) 14%
+  );
+  background-image:
+    radial-gradient(
+      ellipse 78% 68% at 92% 4%,
+      color-mix(in oklch, var(--neon-violet-soft) 72%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 88% 72% at 58% 52%,
+      color-mix(in oklch, var(--neon-violet-soft) 58%, transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      ellipse 104% 92% at 102% 104%,
+      var(--neon-violet-glow) 0%,
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 68% 62% at 100% 102%,
+      var(--neon-pink-glow) 0%,
+      transparent 74%
+    ),
+    radial-gradient(
+      ellipse 48% 34% at 10% 4%,
+      var(--neon-pink-soft),
+      transparent 72%
+    );
+}
+
+.neon-stage::before,
 .neon-stage::after {
   position: absolute;
   inset: 0;
   content: '';
+}
+
+.neon-stage::before {
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='.8'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+.neon-stage::after {
   background: radial-gradient(
     circle at center,
     transparent 48%,
     var(--neon-vignette) 100%
+  );
+}
+.dark
+  [data-theme-preset='neon-glass']:has([data-reveal-neon-stage='true'])
+  .neon-stage::after {
+  background: radial-gradient(
+    circle at 48% 44%,
+    transparent 52%,
+    rgb(0 0 0 / 0.36) 100%
   );
 }
 
@@ -118,11 +196,7 @@ For commercial licensing, please contact support@quantumnous.com
   left: -12%;
   width: 40vw;
   height: 40vw;
-  background: radial-gradient(
-    circle,
-    var(--neon-violet-soft),
-    transparent 72%
-  );
+  background: radial-gradient(circle, var(--neon-violet-soft), transparent 72%);
   animation: neon-stage-drift-c 22s ease-in-out infinite alternate;
 }
 
@@ -157,6 +231,13 @@ For commercial licensing, please contact support@quantumnous.com
  * G2 Glow Glass  (metrics, forms, toolbars).
  * G3 Hero Glass  (hero, login, balance, dialogs) — most transparent.
  *
+ * The base rules keep every theme's surface intact (tinted background +
+ * hairline border from the conservative base tokens), so non-neon presets
+ * keep their existing card/table appearance. The neon-glass preset alone
+ * activates the blur, inner highlights, deep drop shadow and the diagonal
+ * shine sweep — glass material is a preset capability, not a global side
+ * effect.
+ *
  * `isolation: isolate` lets the diagonal highlight (::before, z-index -1)
  * sit above the surface background but below the content. */
 .glass-g0,
@@ -167,6 +248,21 @@ For commercial licensing, please contact support@quantumnous.com
   isolation: isolate;
   background: var(--glass-g0-bg);
   border: 1px solid var(--glass-border);
+}
+.glass-g1 {
+  background: var(--glass-g1-bg);
+}
+.glass-g2 {
+  background: var(--glass-g2-bg);
+}
+.glass-g3 {
+  background: var(--glass-g3-bg);
+}
+
+[data-theme-preset='neon-glass'] .glass-g0,
+[data-theme-preset='neon-glass'] .glass-g1,
+[data-theme-preset='neon-glass'] .glass-g2,
+[data-theme-preset='neon-glass'] .glass-g3 {
   box-shadow:
     inset 0 1px 0 var(--glass-highlight),
     inset 0 -1px 0 oklch(1 0 0 / 0.04),
@@ -174,26 +270,23 @@ For commercial licensing, please contact support@quantumnous.com
   -webkit-backdrop-filter: blur(var(--glass-blur-g0)) saturate(145%);
   backdrop-filter: blur(var(--glass-blur-g0)) saturate(145%);
 }
-.glass-g1 {
-  background: var(--glass-g1-bg);
+[data-theme-preset='neon-glass'] .glass-g1 {
   -webkit-backdrop-filter: blur(var(--glass-blur-g1)) saturate(145%);
   backdrop-filter: blur(var(--glass-blur-g1)) saturate(145%);
 }
-.glass-g2 {
-  background: var(--glass-g2-bg);
+[data-theme-preset='neon-glass'] .glass-g2 {
   -webkit-backdrop-filter: blur(var(--glass-blur-g2)) saturate(145%);
   backdrop-filter: blur(var(--glass-blur-g2)) saturate(145%);
 }
-.glass-g3 {
-  background: var(--glass-g3-bg);
+[data-theme-preset='neon-glass'] .glass-g3 {
   -webkit-backdrop-filter: blur(var(--glass-blur-g3)) saturate(145%);
   backdrop-filter: blur(var(--glass-blur-g3)) saturate(145%);
 }
 
-.glass-g0::before,
-.glass-g1::before,
-.glass-g2::before,
-.glass-g3::before {
+[data-theme-preset='neon-glass'] .glass-g0::before,
+[data-theme-preset='neon-glass'] .glass-g1::before,
+[data-theme-preset='neon-glass'] .glass-g2::before,
+[data-theme-preset='neon-glass'] .glass-g3::before {
   position: absolute;
   inset: 0;
   z-index: -1;
@@ -212,7 +305,8 @@ For commercial licensing, please contact support@quantumnous.com
 /* Keep the glass composition when the global card hover micro-interaction
  * replaces the box-shadow (the generic rule in index.css would otherwise
  * drop the inner highlights and the deep glass drop shadow). */
-body [data-theme-preset='neon-glass']
+body
+  [data-theme-preset='neon-glass']
   [data-slot='card']:is(.glass-g0, .glass-g1, .glass-g2, .glass-g3):hover {
   box-shadow:
     inset 0 1px 0 var(--glass-highlight),
@@ -251,12 +345,12 @@ body [data-theme-preset='neon-glass']
 }
 
 /* ── Hover shine sweep (single pass, interactive cards only) ────────────
- * The sweep layer is invisible outside the neon-glass preset. */
+ * The sweep layer exists only under the neon-glass preset. */
 .glass-shine {
   position: relative;
   overflow: hidden;
 }
-.glass-shine::after {
+[data-theme-preset='neon-glass'] .glass-shine::after {
   position: absolute;
   top: -40%;
   left: -55%;
@@ -285,7 +379,9 @@ body [data-theme-preset='neon-glass']
 
 /* ── Motion variants for cards ─────────────────────────────────────────── */
 .card-motion-lift {
-  transition: transform 150ms ease, box-shadow 150ms ease;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
 }
 @media (prefers-reduced-motion: no-preference) {
   body [data-theme-preset='neon-glass'] .card-motion-lift:hover {
@@ -525,7 +621,9 @@ body [data-theme-preset='neon-glass']
   );
 }
 
-/* Content canvas: the inset is transparent so the stage shows through. */
+/* Content canvas: preserve the existing transparent inset in both color
+ * modes. Excluded dark routes still paint the opaque sidebar wrapper behind
+ * it, while opted-in routes make that wrapper transparent to reveal the stage. */
 [data-theme-preset='neon-glass'] [data-slot='sidebar-inset'] {
   background-color: transparent;
 }
@@ -551,11 +649,12 @@ body [data-theme-preset='neon-glass']
   box-shadow: var(--tw-ring-shadow), var(--glass-shadow);
 }
 
-/* Tooltips: G3 glass with clear light text (inverted vs. the default
- * foreground-background swap). */
+/* Tooltips: G3 glass with the popover foreground (semantic token, not a
+ * fixed neon color — stays readable on the light and dark fallback
+ * surfaces when backdrop blur is unavailable). */
 [data-theme-preset='neon-glass'] [data-slot='tooltip-content'] {
   background-color: var(--glass-g3-bg);
-  color: var(--neon-text);
+  color: var(--popover-foreground);
   border: 1px solid var(--glass-border);
   -webkit-backdrop-filter: blur(var(--glass-blur-g3)) saturate(145%);
   backdrop-filter: blur(var(--glass-blur-g3)) saturate(145%);
@@ -570,13 +669,17 @@ body [data-theme-preset='neon-glass']
  * focus (the two-tone neon focus). */
 [data-theme-preset='neon-glass'] [data-slot='input']:focus-visible {
   border-color: var(--neon-pink);
-  box-shadow: var(--tw-ring-shadow), inset 0 0 12px var(--neon-cyan-soft);
+  box-shadow:
+    var(--tw-ring-shadow),
+    inset 0 0 12px var(--neon-cyan-soft);
 }
 
 /* Tabs: active trigger gets a pink glow (pill) / glowing pink underline
  * (line variant). */
 [data-theme-preset='neon-glass'] [data-slot='tabs-trigger'][data-active] {
-  box-shadow: var(--tw-ring-shadow), 0 0 0 1px var(--neon-pink-soft),
+  box-shadow:
+    var(--tw-ring-shadow),
+    0 0 0 1px var(--neon-pink-soft),
     0 0 14px var(--neon-pink-soft);
 }
 [data-theme-preset='neon-glass']
@@ -595,20 +698,38 @@ body [data-theme-preset='neon-glass']
  * Oversized brand title with wide tracking; only the neon-glass preset
  * gets the full display scale (documented: clamp(64px, 9vw, 144px)). */
 [data-theme-preset='neon-glass'] .neon-hero-title {
+  display: inline-block;
   font-size: clamp(3.25rem, 8vw, 6.5rem);
-  font-weight: 800;
+  font-weight: 900;
   letter-spacing: 0.1em;
   line-height: 1.05;
   text-transform: uppercase;
-  background: linear-gradient(
-    92deg,
-    var(--neon-pink) 0%,
-    var(--neon-yellow) 48%,
-    var(--neon-cyan) 100%
+  background-image: linear-gradient(
+    105deg,
+    oklch(0.4 0.07 282) 0%,
+    oklch(0.75 0.09 292) 12%,
+    oklch(0.96 0.025 285) 18%,
+    oklch(0.68 0.2 302) 34%,
+    oklch(0.94 0.04 250) 45%,
+    oklch(0.64 0.22 222) 63%,
+    oklch(0.82 0.1 246) 77%,
+    oklch(0.48 0.16 294) 90%,
+    oklch(0.76 0.09 270) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  text-shadow:
+    0 -1px 0 rgb(255 255 255 / 0.34),
+    0 1px 0 rgb(18 7 42 / 0.82);
+}
+.dark [data-theme-preset='neon-glass'] .neon-hero-title {
+  filter: drop-shadow(
+      0 0 0.3rem color-mix(in oklch, var(--neon-violet) 44%, transparent)
+    )
+    drop-shadow(
+      0 0 0.9rem color-mix(in oklch, var(--neon-violet) 22%, transparent)
+    );
 }
 @media (max-width: 767px) {
   [data-theme-preset='neon-glass'] .neon-hero-title {
@@ -660,21 +781,6 @@ body [data-theme-preset='neon-glass']
 }
 @media (max-width: 767px) {
   .neon-hero-outline {
-    display: none;
-  }
-}
-
-/* Inline background word (ROUTER) — its own layout row directly below the
- * signal badge, so it can never overlap the headline. Hidden on mobile. */
-[data-theme-preset='neon-glass'] .neon-hero-outline--inline {
-  display: block;
-  font-size: clamp(2.5rem, 6vw, 5.5rem);
-  font-weight: 900;
-  line-height: 1;
-  white-space: nowrap;
-}
-@media (max-width: 767px) {
-  .neon-hero-outline--inline {
     display: none;
   }
 }
@@ -782,7 +888,9 @@ body [data-theme-preset='neon-glass']
 }
 @media (prefers-reduced-motion: no-preference) {
   body [data-theme-preset='neon-glass'] .neon-metric:hover {
-    box-shadow: 0 0 0 1px var(--neon-pink-soft), 0 0 18px var(--neon-pink-soft);
+    box-shadow:
+      0 0 0 1px var(--neon-pink-soft),
+      0 0 18px var(--neon-pink-soft);
     background-color: color-mix(
       in oklch,
       var(--neon-pink-soft) 30%,
@@ -801,10 +909,14 @@ body [data-theme-preset='neon-glass']
 }
 @media (prefers-reduced-motion: no-preference) {
   body [data-theme-preset='neon-glass'] .neon-preset-btn:hover {
-    box-shadow: 0 0 0 1px var(--neon-pink-soft), 0 0 12px var(--neon-pink-soft);
+    box-shadow:
+      0 0 0 1px var(--neon-pink-soft),
+      0 0 12px var(--neon-pink-soft);
   }
   body [data-theme-preset='neon-glass'] .neon-preset-btn--active {
-    box-shadow: 0 0 0 1px var(--neon-pink-soft), 0 0 18px var(--neon-pink-soft);
+    box-shadow:
+      0 0 0 1px var(--neon-pink-soft),
+      0 0 18px var(--neon-pink-soft);
   }
 }
 
@@ -860,30 +972,35 @@ body [data-theme-preset='neon-glass']
   }
 }
 
-/* ── Degradation ────────────────────────────────────────────────────────── */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass-g0,
-  .glass-g1,
-  .glass-g2,
-  .glass-g3,
-  [data-theme-preset='neon-glass'] [data-slot='dialog-content'],
-  [data-theme-preset='neon-glass'] [data-slot='popover-content'],
-  [data-theme-preset='neon-glass'] [data-slot='sheet-content'],
-  [data-theme-preset='neon-glass'] [data-slot='tooltip-content'] {
-    background-color: oklch(0.13 0.01 285 / 0.94);
+/* ── Degradation ──────────────────────────────────────────────────────────
+ * No backdrop blur: the glass surfaces turn near-opaque so text contrast
+ * stays intact on both light and dark stages. Tokens are overridden (not
+ * surfaces hardcoded) so every consumer of the glass/sidebar/header tokens
+ * inherits the correct per-mode fallback. */
+@supports not
+((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-theme-preset='neon-glass'] {
+    --glass-g0-bg: oklch(0.985 0.008 285 / 0.98);
+    --glass-g1-bg: oklch(0.98 0.01 285 / 0.98);
+    --glass-g2-bg: oklch(0.975 0.011 285 / 0.98);
+    --glass-g3-bg: oklch(0.97 0.012 285 / 0.98);
+    --sidebar: oklch(0.985 0.004 285 / 0.98);
   }
-  [data-theme-preset='neon-glass'] [data-slot='sidebar'],
-  [data-theme-preset='neon-glass'] [data-slot='app-header'] {
-    background-color: oklch(0.13 0.01 285 / 0.96);
+  .dark [data-theme-preset='neon-glass'] {
+    --glass-g0-bg: oklch(0.155 0.012 285 / 0.98);
+    --glass-g1-bg: oklch(0.155 0.012 285 / 0.98);
+    --glass-g2-bg: oklch(0.16 0.013 285 / 0.98);
+    --glass-g3-bg: oklch(0.17 0.014 285 / 0.98);
+    --sidebar: oklch(0.13 0.01 285 / 0.98);
   }
 }
 
 /* Mobile: cheaper blur, no drifting blobs. */
 @media (max-width: 767px) {
-  .glass-g0,
-  .glass-g1,
-  .glass-g2,
-  .glass-g3 {
+  [data-theme-preset='neon-glass'] .glass-g0,
+  [data-theme-preset='neon-glass'] .glass-g1,
+  [data-theme-preset='neon-glass'] .glass-g2,
+  [data-theme-preset='neon-glass'] .glass-g3 {
     -webkit-backdrop-filter: blur(12px) saturate(140%);
     backdrop-filter: blur(12px) saturate(140%);
   }

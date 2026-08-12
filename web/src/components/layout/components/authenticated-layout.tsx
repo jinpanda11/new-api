@@ -16,6 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useLocation } from '@tanstack/react-router'
+
 import { AnimatedOutlet } from '@/components/page-transition'
 import { SkipToMain } from '@/components/skip-to-main'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
@@ -24,6 +26,7 @@ import { SearchProvider } from '@/context/search-provider'
 import { getCookie } from '@/lib/cookies'
 import { cn } from '@/lib/utils'
 
+import { shouldRevealNeonStage } from '../lib/neon-stage-visibility'
 import { AppHeader } from './app-header'
 import { AppSidebar } from './app-sidebar'
 
@@ -32,12 +35,18 @@ type AuthenticatedLayoutProps = {
 }
 
 export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
+  const pathname = useLocation({ select: (location) => location.pathname })
   const defaultOpen = getCookie('sidebar_state') !== 'false'
+  const revealNeonStage = shouldRevealNeonStage(pathname)
 
   return (
     <LayoutProvider>
       <SearchProvider>
-        <SidebarProvider defaultOpen={defaultOpen} className='flex-col'>
+        <SidebarProvider
+          data-reveal-neon-stage={revealNeonStage || undefined}
+          defaultOpen={defaultOpen}
+          className='flex-col'
+        >
           <SkipToMain />
           <AppHeader />
           <div className='flex min-h-0 w-full flex-1'>

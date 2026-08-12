@@ -127,9 +127,17 @@ export type DataTablePageProps<TData> = {
 
   /**
    * Bulk action bar — typically a wrapped {@link DataTableBulkActions} component.
-   * Rendered only on desktop (mobile selection is uncommon).
+   * Rendered on desktop; also rendered on mobile when `showBulkActionsOnMobile`
+   * is set (pages where the card/table views must offer equivalent bulk
+   * operations, e.g. API keys).
    */
   bulkActions?: React.ReactNode
+
+  /**
+   * Opt into rendering `bulkActions` on mobile too (default: desktop only).
+   * Use with card views that expose row selection on small screens.
+   */
+  showBulkActionsOnMobile?: boolean
 
   /**
    * Custom mobile list node — fully replaces the default {@link MobileCardList}.
@@ -350,8 +358,9 @@ export function DataTablePage<TData>(props: DataTablePageProps<TData>) {
       </div>
 
       {/* Bulk actions are typically a fixed-position toolbar; let the consumer
-          handle its own visibility, we just gate it to non-mobile. */}
-      {!showMobile && props.bulkActions}
+          handle its own visibility. Desktop always renders them when provided;
+          mobile is opt-in via `showBulkActionsOnMobile`. */}
+      {(!showMobile || props.showBulkActionsOnMobile) && props.bulkActions}
 
       {paginationNode}
     </>

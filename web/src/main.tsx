@@ -33,12 +33,21 @@ import {
   applyUserInterfaceLanguage,
 } from '@/i18n/language-state'
 import { getStatus } from '@/lib/api'
+import { getCookie } from '@/lib/cookies'
 import { installBuildMetadata } from '@/lib/build-metadata'
+import {
+  applyThemeToDom,
+  isTheme,
+  resolveInitialTheme,
+  THEME_COOKIE_NAME,
+} from '@/lib/theme'
 import { useAuthStore } from '@/stores/auth-store'
 import { applyFaviconToDom } from '@/lib/dom-utils'
 import '@/lib/dayjs'
 import { initializeFrontendCache } from '@/lib/frontend-cache'
 import { handleServerError } from '@/lib/handle-server-error'
+import { mapStatusDataToConfig } from '@/hooks/use-system-config'
+import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import { DirectionProvider } from './context/direction-provider'
 import { FontProvider } from './context/font-provider'
@@ -125,7 +134,9 @@ function applySystemBranding(status: Record<string, unknown>): void {
   }
 }
 
-async function initializeInterfaceLanguage(): Promise<void> {
+async function initializeInterfaceLanguage(): Promise<
+  Record<string, unknown> | undefined
+> {
   try {
     const cachedStatus = window.localStorage.getItem('status')
     if (cachedStatus) {
@@ -143,20 +154,50 @@ async function initializeInterfaceLanguage(): Promise<void> {
     } catch {
       /* empty */
     }
+    // Populate the system config store from the same boot request so
+    // `useSystemConfig` consumers see real branding/currency on the first
+    // render instead of defaults (the `useStatus` query is prefilled below,
+    // so its queryFn — which used to perform this sync — is not re-run).
+    try {
+      useSystemConfigStore.getState().setConfig(mapStatusDataToConfig(status))
+    } catch {
+      /* empty */
+    }
     await applyDefaultInterfaceLanguage(
       typeof status.interface_language === 'string'
         ? status.interface_language
         : undefined
     )
+    await applyUserInterfaceLanguage(useAuthStore.getState().auth.user)
+    return status
   } catch {
     // Keep the English fallback when the public status endpoint is unavailable.
   }
 
   await applyUserInterfaceLanguage(useAuthStore.getState().auth.user)
+  return undefined
 }
 
 async function renderApp(): Promise<void> {
-  await initializeInterfaceLanguage()
+  const status = await initializeInterfaceLanguage()
+
+  // Resolve the first-render theme once, from the same boot status request.
+  const storedTheme = getCookie(THEME_COOKIE_NAME)
+  const serverDefaultTheme = isTheme(status?.default_theme)
+    ? status.default_theme
+    : undefined
+  applyThemeToDom(
+    resolveInitialTheme(
+      isTheme(storedTheme) ? storedTheme : undefined,
+      serverDefaultTheme
+    )
+  )
+
+  // Prefill the shared status query so `useStatus` and friends never issue
+  // a second /api/status request for the same state.
+  if (status) {
+    queryClient.setQueryData(['status'], status)
+  }
 
   const rootElement = document.querySelector<HTMLElement>('#root')
   if (!rootElement) {
@@ -168,7 +209,7 @@ async function renderApp(): Promise<void> {
     root.render(
       <StrictMode>
         <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
+          <ThemeProvider defaultTheme={serverDefaultTheme}>
             <FontProvider>
               <DirectionProvider>
                 <RouterProvider router={router} />

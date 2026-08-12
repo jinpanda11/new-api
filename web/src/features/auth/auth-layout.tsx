@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 
 import { TiltCard } from '@/components/tilt-card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useMediaQuery } from '@/hooks'
 import { useSystemConfig } from '@/hooks/use-system-config'
 
 type AuthLayoutProps = {
@@ -30,9 +31,15 @@ type AuthLayoutProps = {
 export function AuthLayout({ children }: AuthLayoutProps) {
   const { t } = useTranslation()
   const { systemName, logo, loading } = useSystemConfig()
+  // Short viewports (e.g. 390×600): keep the glass card static so the form
+  // never inherits a perspective transform while the page scrolls.
+  const isShortViewport = useMediaQuery('(max-height: 640px)')
 
   return (
-    <div className='relative grid h-svh max-w-none overflow-hidden'>
+    <div
+      data-reveal-neon-stage='true'
+      className='relative grid min-h-svh max-w-none'
+    >
       {/* Oversized decorative "ACCESS" outline word behind the glass card
        * (aria-hidden, invisible outside the neon-glass preset). */}
       <span
@@ -45,7 +52,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       {/* Auth-local glow fields: pink top-left, lime bottom-right. */}
       <div
         aria-hidden
-        className='pointer-events-none absolute inset-0'
+        className='neon-auth-glow pointer-events-none absolute inset-0'
         style={{
           background: [
             'radial-gradient(ellipse 42% 34% at 10% 8%, var(--neon-pink-soft) 0%, transparent 70%)',
@@ -78,9 +85,16 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         <span aria-hidden className='neon-brand-pulse' />
       </Link>
 
-      <div className='container flex items-center pt-16 sm:pt-0'>
+      {/* Vertical centering when the form fits; the page scrolls naturally
+       * when it does not (min-h-svh, no overflow clip). Mobile keeps top
+       * clearance for the floating logo and bottom padding so the last
+       * interactive control is always reachable. */}
+      <div className='container flex items-center pt-16 pb-8 sm:pt-0 sm:pb-12'>
         {/* Gentle mouse tilt on the glass card (design doc §22.4). */}
-        <TiltCard className='mx-auto w-full sm:w-[480px]'>
+        <TiltCard
+          className='mx-auto w-full sm:w-[480px]'
+          disabled={isShortViewport}
+        >
           <div className='glass-g3 neon-border flex w-full flex-col justify-center space-y-2 rounded-2xl px-5 py-8 sm:px-8 sm:py-10'>
             {children}
           </div>

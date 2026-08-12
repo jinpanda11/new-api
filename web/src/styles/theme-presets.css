@@ -420,9 +420,9 @@ For commercial licensing, please contact support@quantumnous.com
  *   --info       = electric cyan (info, models, latency, request flow)
  *   --destructive = neon red  (errors, failures, dangerous actions)      */
 [data-theme-preset='neon-glass'] {
-  --background: oklch(0.955 0.006 285);
+  --background: oklch(0.965 0.012 285);
   --foreground: oklch(0.185 0.012 285);
-  --card: oklch(1 0 0 / 0.82);
+  --card: oklch(0.985 0.008 285 / 0.9);
   --card-foreground: oklch(0.185 0.012 285);
   --popover: oklch(0.99 0.004 285 / 0.94);
   --popover-foreground: oklch(0.185 0.012 285);
@@ -437,15 +437,17 @@ For commercial licensing, please contact support@quantumnous.com
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.985 0.01 285);
   --success: oklch(0.66 0.19 130);
-  --success-foreground: oklch(0.985 0.01 285);
+  /* Light-mode success/warning chips are bright; dark ink reads better
+   * than white on them (design doc §5.5). */
+  --success-foreground: oklch(0.2 0.02 130);
   --warning: oklch(0.78 0.17 98);
-  --warning-foreground: oklch(0.985 0.01 285);
+  --warning-foreground: oklch(0.22 0.03 90);
   --info: oklch(0.55 0.13 210);
   --info-foreground: oklch(0.985 0.01 285);
   --neutral: oklch(0.48 0.02 285);
   --neutral-foreground: oklch(0.985 0.01 285);
-  --border: oklch(0.25 0.01 285 / 0.14);
-  --input: oklch(0.25 0.01 285 / 0.1);
+  --border: oklch(0.25 0.02 285 / 0.2);
+  --input: oklch(0.25 0.02 285 / 0.16);
   --ring: oklch(0.58 0.23 350);
   --chart-1: oklch(0.55 0.13 210);
   --chart-2: oklch(0.58 0.23 350);
@@ -458,23 +460,25 @@ For commercial licensing, please contact support@quantumnous.com
   --sidebar-primary-foreground: oklch(0.985 0.01 285);
   --sidebar-accent: oklch(0.9 0.012 285 / 0.9);
   --sidebar-accent-foreground: oklch(0.24 0.02 285);
-  --sidebar-border: oklch(0.25 0.01 285 / 0.14);
+  --sidebar-border: oklch(0.25 0.02 285 / 0.2);
   --sidebar-ring: oklch(0.58 0.23 350);
   --skeleton-base: oklch(0.92 0.006 285 / 0.9);
   --skeleton-highlight: oklch(0.96 0.004 285 / 0.9);
   --table-row: transparent;
-  --table-header: oklch(0.25 0.01 285 / 0.05);
-  --table-header-hover: oklch(0.25 0.01 285 / 0.09);
-  --table-disabled: oklch(0.25 0.01 285 / 0.04);
-  --table-disabled-hover: oklch(0.25 0.01 285 / 0.07);
-  --table-disabled-border: oklch(0.25 0.01 285 / 0.18);
+  --table-header: oklch(0.25 0.02 285 / 0.05);
+  --table-header-hover: oklch(0.25 0.02 285 / 0.09);
+  --table-disabled: oklch(0.25 0.02 285 / 0.04);
+  --table-disabled-hover: oklch(0.25 0.02 285 / 0.07);
+  --table-disabled-border: oklch(0.25 0.02 285 / 0.18);
 
-  /* Ice glass surfaces — bright, high opacity, blur stays low-key. */
-  --glass-g0-bg: oklch(1 0 0 / 0.9);
-  --glass-g1-bg: oklch(1 0 0 / 0.8);
-  --glass-g2-bg: oklch(1 0 0 / 0.7);
-  --glass-g3-bg: oklch(1 0 0 / 0.6);
-  --glass-border: oklch(0.3 0.01 285 / 0.16);
+  /* Ice glass surfaces — cool-tinted, bright and fairly opaque; borders
+   * and inputs gain opacity so terminals, inputs and helper text keep a
+   * clear edge on the light stage (design doc §5.3). */
+  --glass-g0-bg: oklch(0.985 0.008 285 / 0.94);
+  --glass-g1-bg: oklch(0.98 0.01 285 / 0.86);
+  --glass-g2-bg: oklch(0.975 0.011 285 / 0.78);
+  --glass-g3-bg: oklch(0.97 0.012 285 / 0.7);
+  --glass-border: oklch(0.3 0.02 285 / 0.22);
   --glass-highlight: oklch(1 0 0 / 0.7);
   --glass-shadow: 0 24px 80px rgb(0 0 0 / 0.18);
   --neon-vignette: rgb(255 255 255 / 0.4);
@@ -512,9 +516,11 @@ For commercial licensing, please contact support@quantumnous.com
   --popover-foreground: oklch(0.965 0.01 285);
   /* Violet primary in dark mode — the magenta-rose reads harsh on the
    * purple stage; buttons also get a violet gradient (see neon.css).
-   * Light mode keeps the magenta-rose primary. */
+   * Light mode keeps the magenta-rose primary. Primary actions use a
+   * near-white foreground so deep-violet buttons keep AA contrast on
+   * every display (design doc §5.4). */
   --primary: oklch(0.63 0.2 300);
-  --primary-foreground: oklch(0.12 0.01 285);
+  --primary-foreground: oklch(0.98 0.01 285);
   --secondary: oklch(0.2 0.014 285 / 0.72);
   --secondary-foreground: oklch(0.9 0.02 285);
   --muted: oklch(0.19 0.013 285 / 0.8);
@@ -542,7 +548,7 @@ For commercial licensing, please contact support@quantumnous.com
   --sidebar: oklch(0.13 0.01 285 / 0.86);
   --sidebar-foreground: oklch(0.965 0.01 285);
   --sidebar-primary: oklch(0.63 0.2 300);
-  --sidebar-primary-foreground: oklch(0.12 0.01 285);
+  --sidebar-primary-foreground: oklch(0.98 0.01 285);
   --sidebar-accent: oklch(0.24 0.015 285 / 0.9);
   --sidebar-accent-foreground: oklch(0.985 0.01 285);
   --sidebar-border: oklch(1 0 0 / 0.16);

@@ -32,10 +32,30 @@ interface HeroProps {
   isAuthenticated?: boolean
 }
 
+/**
+ * Brand title (H1) — the product name is the first visual focus of the
+ * landing page. The entrance fade-up animation lives on the H1 while the
+ * neon-glass shimmer gradient lives on the inner span, so the two
+ * `animation` shorthands can never compete on the same element (the
+ * shimmer would otherwise override the fade-up's `both` fill and leave
+ * the H1 permanently transparent). Outside the neon-glass preset the span
+ * has no styles and the plain heading still renders.
+ */
+export function HeroTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h1
+      className='landing-animate-fade-up text-4xl font-extrabold tracking-tight opacity-0 md:text-6xl'
+      style={{ animationDelay: '60ms' }}
+    >
+      <span className='neon-hero-title'>{children}</span>
+    </h1>
+  )
+}
+
 // Stylized three-dots indicator representing "More"
 const MoreIcon = () => (
   <svg
-    className='text-muted-foreground/60 group-hover:text-foreground size-6 shrink-0 transition-colors'
+    className='text-muted-foreground/70 group-hover:text-foreground size-6 shrink-0 transition-colors'
     viewBox='0 0 24 24'
     fill='none'
     xmlns='http://www.w3.org/2000/svg'
@@ -107,36 +127,21 @@ export function Hero(props: HeroProps) {
       />
 
       <div className='mx-auto flex max-w-5xl flex-col items-center text-center'>
-        {/* Online signal badge, with the ROUTER background word sitting
-         * right below it as its own layout row (no overlap with the
-         * headline; hidden on mobile). */}
-        <div className='mb-4'>
-          <div
-            className='landing-animate-fade-up inline-flex items-center gap-2 rounded-full border border-border/40 bg-muted/10 px-3.5 py-1.5 text-[11px] font-medium text-muted-foreground opacity-0 backdrop-blur-sm'
-            style={{ animationDelay: '0ms' }}
-          >
-            <span aria-hidden className='neon-status-dot neon-status-dot--breath' />
-            <span>{t('AI Application Infrastructure Foundation')}</span>
-          </div>
-          <span
-            aria-hidden
-            className='neon-outline-text neon-hero-outline--inline'
-          >
-            JPGAPI
-          </span>
+        {/* Online signal badge. */}
+        <div
+          className='landing-animate-fade-up mb-3 inline-flex items-center gap-2 rounded-full border border-border/40 bg-muted/10 px-3.5 py-1.5 text-[11px] font-medium text-muted-foreground opacity-0 backdrop-blur-sm'
+          style={{ animationDelay: '0ms' }}
+        >
+          <span aria-hidden className='neon-status-dot neon-status-dot--breath' />
+          <span>{t('AI Application Infrastructure Foundation')}</span>
         </div>
 
         {/* Brand title — the product name is the H1, directly on the stage. */}
-        <h1
-          className='landing-animate-fade-up neon-hero-title text-4xl font-extrabold tracking-tight opacity-0 md:text-6xl'
-          style={{ animationDelay: '60ms' }}
-        >
-          {systemName}
-        </h1>
+        <HeroTitle>{systemName}</HeroTitle>
 
         {/* Subtitle */}
         <h2
-          className='landing-animate-fade-up mt-5 text-lg font-semibold opacity-0 sm:text-xl md:text-2xl'
+          className='landing-animate-fade-up mt-4 text-lg font-semibold opacity-0 sm:text-xl md:text-2xl'
           style={{ animationDelay: '110ms' }}
         >
           {t('Unified API Gateway for')}{' '}
@@ -146,7 +151,7 @@ export function Hero(props: HeroProps) {
         </h2>
 
         <p
-          className='landing-animate-fade-up text-muted-foreground/80 mt-5 max-w-xl text-base leading-relaxed opacity-0 md:text-[15px]'
+          className='landing-animate-fade-up text-muted-foreground/80 mt-4 max-w-xl text-base leading-relaxed opacity-0 md:text-[15px]'
           style={{ animationDelay: '160ms' }}
         >
           {t(
@@ -156,7 +161,7 @@ export function Hero(props: HeroProps) {
 
         {/* Actions */}
         <div
-          className='landing-animate-fade-up mt-8 flex flex-wrap items-center justify-center gap-3 opacity-0'
+          className='landing-animate-fade-up mt-7 flex flex-wrap items-center justify-center gap-3 opacity-0'
           style={{ animationDelay: '210ms' }}
         >
           {props.isAuthenticated ? (
@@ -207,10 +212,10 @@ export function Hero(props: HeroProps) {
           style={{ animationDelay: '340ms' }}
         >
           <div className='mb-4 flex flex-col items-center gap-1'>
-            <span className='text-muted-foreground/50 text-[10px] font-bold tracking-[0.15em] uppercase'>
+            <span className='text-muted-foreground/70 text-[11px] font-bold tracking-[0.15em] uppercase'>
               {t('Supported Applications')}
             </span>
-            <p className='text-muted-foreground/60 text-xs leading-relaxed'>
+            <p className='text-muted-foreground/80 text-xs leading-relaxed'>
               {t(
                 'Supports one-click configuration and perfectly adapts to NewAPI multi-protocol configuration.'
               )}
@@ -256,7 +261,7 @@ export function Hero(props: HeroProps) {
             </a>
 
             {/* "更多" */}
-            <div className='group border-border/40 bg-muted/15 text-foreground/55 hover:border-border hover:bg-muted/30 hover:text-foreground flex cursor-default items-center gap-2.5 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'>
+            <div className='group border-border/40 bg-muted/15 text-foreground/70 hover:border-border hover:bg-muted/30 hover:text-foreground flex cursor-default items-center gap-2.5 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'>
               <MoreIcon />
               <span>{t('More Apps')}</span>
             </div>

@@ -19,6 +19,8 @@ For commercial licensing, please contact support@quantumnous.com
 import { flexRender, type Row } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 
+import { cn } from '@/lib/utils'
+
 import type { ApiKey } from '../types'
 
 /**
@@ -51,17 +53,36 @@ export function ApiKeyCardComponent({
     { id: 'accessed_time', label: t('Last Used') },
   ]
 
+  const selectCell = renderCell('select')
   const nameCell = renderCell('name')
   const statusCell = renderCell('status')
   const actionsCell = renderCell('actions')
   const keyCell = renderCell('key')
 
   return (
-    <div data-state={isSelected ? 'selected' : undefined} className='h-full'>
-      <div className='glass-g1 glass-shine group/card relative flex h-full flex-col gap-3 overflow-hidden rounded-xl p-4 transition-transform duration-300 hover:-translate-y-1'>
-        {/* Row 1: name + status + actions */}
+    <div
+      data-slot='api-key-card'
+      data-state={isSelected ? 'selected' : undefined}
+      // Note: no `aria-selected` here — the wrapper is a generic div, and
+      // `aria-selected` is only defined for gridcell/option/row/tab roles.
+      // Selection is conveyed via the select cell's checkbox (aria-checked).
+      className='h-full'
+    >
+      <div
+        className={cn(
+          'glass-g1 glass-shine group/card relative flex h-full flex-col gap-3 overflow-hidden rounded-xl p-4 transition-transform duration-300 hover:-translate-y-1',
+          isSelected &&
+            'border-primary/60 ring-1 ring-primary/40 ring-inset'
+        )}
+      >
+        {/* Row 1: select + name, then status + actions. The select cell is
+         * the same checkbox column the table renders, so card and table
+         * selection stay fully equivalent (incl. keyboard/Space). */}
         <div className='flex items-start justify-between gap-2'>
-          <div className='min-w-0 flex-1'>{nameCell}</div>
+          <div className='flex min-w-0 items-center gap-1'>
+            {selectCell ? <div className='shrink-0'>{selectCell}</div> : null}
+            <div className='min-w-0 flex-1'>{nameCell}</div>
+          </div>
           <div className='flex shrink-0 items-center gap-1.5'>
             {statusCell}
             {actionsCell}
@@ -77,7 +98,7 @@ export function ApiKeyCardComponent({
         <div className='mt-auto grid grid-cols-2 gap-x-3 gap-y-2'>
           {footerLabels.map(({ id, label }) => (
             <div key={id} className='min-w-0'>
-              <div className='text-muted-foreground text-[10px] font-medium tracking-wider uppercase'>
+              <div className='text-muted-foreground text-[11px] font-medium tracking-wider uppercase'>
                 {label}
               </div>
               <div className='text-foreground/90 mt-0.5 truncate text-xs tabular-nums'>

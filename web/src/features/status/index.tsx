@@ -30,7 +30,7 @@ export function StatusPage() {
   const { query, countdown, enabled, cards } = useStatusCards()
 
   return (
-    <PublicLayout showMainContainer={false}>
+    <PublicLayout showMainContainer={false} revealNeonStage>
       <PageTransition className='relative mx-auto w-full max-w-[1280px] space-y-6 px-3 pt-16 pb-10 sm:px-6 sm:pt-20 sm:pb-12 xl:px-8'>
         <header className='flex flex-wrap items-end justify-between gap-3'>
           <div>
@@ -41,7 +41,7 @@ export function StatusPage() {
               {t('按分组查看渠道可用性与近期表现')}
             </p>
           </div>
-          <div className='text-muted-foreground text-xs sm:text-sm tabular-nums'>
+          <div className='text-muted-foreground text-xs tabular-nums sm:text-sm'>
             {query.isFetching
               ? t('刷新中...')
               : t('{{n}}S 后刷新', { n: countdown })}
@@ -58,7 +58,9 @@ export function StatusPage() {
         ) : cards.length === 0 ? (
           <EmptyState
             title={t('暂无展示分组')}
-            description={t('管理员可在系统设置的「状态页设置」中勾选要展示的分组')}
+            description={t(
+              '管理员可在系统设置的「状态页设置」中勾选要展示的分组'
+            )}
           />
         ) : (
           <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'>

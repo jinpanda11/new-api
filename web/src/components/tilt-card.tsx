@@ -23,6 +23,7 @@ import {
   type ReactNode,
 } from 'react'
 
+import { useMediaQuery } from '@/hooks'
 import { cn } from '@/lib/utils'
 
 type TiltCardProps = {
@@ -38,6 +39,12 @@ type TiltCardProps = {
    * @default 8
    */
   maxShift?: number
+  /**
+   * Explicitly disable the tilt (static card). Also disables automatically
+   * on coarse pointers, narrow screens and short viewports, and under
+   * `prefers-reduced-motion` — the card then renders flat.
+   */
+  disabled?: boolean
   style?: CSSProperties
 }
 
@@ -45,25 +52,36 @@ type TiltCardProps = {
  * Mouse-following 3D tilt wrapper used by hero/balance/login cards.
  *
  * Writes the tilt into CSS custom properties consumed by the inline
- * `transform` below, driven by a rAF-throttled pointer handler. Disabled on
- * touch devices and under `prefers-reduced-motion`; the card then renders
- * flat with the pointer-follow highlight still available via hover.
+ * `transform` below, driven by a rAF-throttled pointer handler. Degrades to
+ * a static card on touch/coarse pointers, narrow screens (≤640px), short
+ * viewports (≤640px tall), under `prefers-reduced-motion`, or when
+ * `disabled` is set.
  */
 export function TiltCard({
   children,
   className,
   maxTilt = 3,
   maxShift = 8,
+  disabled = false,
   style,
 }: TiltCardProps) {
   const ref = useRef<HTMLDivElement>(null)
+  const prefersReducedMotion = useMediaQuery(
+    '(prefers-reduced-motion: reduce)'
+  )
+  const hasCoarsePointer = useMediaQuery('(pointer: coarse)')
+  const isNarrowViewport = useMediaQuery('(max-width: 640px)')
+  const isShortViewport = useMediaQuery('(max-height: 640px)')
+  const tiltDisabled =
+    disabled ||
+    prefersReducedMotion ||
+    hasCoarsePointer ||
+    isNarrowViewport ||
+    isShortViewport
 
   useEffect(() => {
     const el = ref.current
-    if (!el) return
-
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    if (mq.matches) return
+    if (!el || tiltDisabled) return
 
     let frame = 0
     let rafPending = false
@@ -108,14 +126,20 @@ export function TiltCard({
       if (rafPending) cancelAnimationFrame(frame)
       el.removeEventListener('pointermove', onPointerMove)
       el.removeEventListener('pointerleave', onPointerLeave)
+      el.style.setProperty('--tilt-rx', '0deg')
+      el.style.setProperty('--tilt-ry', '0deg')
+      el.style.setProperty('--tilt-dx', '0px')
+      el.style.setProperty('--tilt-dy', '0px')
     }
-  }, [maxTilt, maxShift])
+  }, [tiltDisabled, maxTilt, maxShift])
 
   return (
     <div
       ref={ref}
+      data-tilt-card
       className={cn(
-        'motion-safe:[transform:perspective(1200px)_rotateX(var(--tilt-rx,0deg))_rotateY(var(--tilt-ry,0deg))_translate3d(var(--tilt-dx,0px),var(--tilt-dy,0px),0)] motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out motion-safe:will-change-transform',
+        !tiltDisabled &&
+          'motion-safe:[transform:perspective(1200px)_rotateX(var(--tilt-rx,0deg))_rotateY(var(--tilt-ry,0deg))_translate3d(var(--tilt-dx,0px),var(--tilt-dy,0px),0)] motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out motion-safe:will-change-transform',
         className
       )}
       style={style}
